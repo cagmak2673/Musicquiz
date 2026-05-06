@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Music Quiz PRO by Çağdaş</title>
+    <style>
+        :root {
+            --bg: #f0f2f5; --card: #ffffff; --accent: #6c5ce7; --gold: #f0a500;
+            --success: #00b894; --error: #e74c3c; --text: #2d3436; --shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .dark { --bg:#1a1d23; --card:#252830; --text:#eee; --shadow:0 4px 15px rgba(0,0,0,0.4); }
+        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+        body {
+            font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text);
+            min-height:100vh; display:flex; justify-content:center; align-items:center; transition:0.3s; padding:10px;
+        }
+        .app {
+            width:420px; max-width:100%; height:90vh; max-height:850px;
+            background:var(--card); border-radius:30px; box-shadow:var(--shadow);
+            display:flex; flex-direction:column; overflow:hidden; position:relative;
+        }
+        .screen { display:none; flex-direction:column; height:100%; padding:20px; overflow-y:auto; }
+        .screen.active { display:flex; }
+
+        #intro {
+            position:fixed; inset:0; background:linear-gradient(135deg,#6c5ce7,#2d3436);
+            z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column;
+            animation:fadeOut 0.5s 2.5s forwards;
+        }
+        #intro .icon { font-size:80px; animation:bounce 2s infinite; }
+        #intro .title { font-size:36px; color:#fff; font-weight:900; letter-spacing:8px; margin-top:15px; }
+        #intro .sub { font-size:16px; color:#a29bfe; font-weight:600; letter-spacing:4px; margin-top:8px; }
+        @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-25px)} }
+        @keyframes fadeOut { to{opacity:0;visibility:hidden} }
+
+        .loader {
+            position:absolute; inset:0; background:rgba(0,0,0,0.7); z-index:100; display:none;
+            justify-content:center; align-items:center; flex-direction:column; border-radius:30px;
+        }
+        .loader.active { display:flex; }
+        .spinner { width:50px; height:50px; border:4px solid #fff; border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; }
+        @keyframes spin { to{transform:rotate(360deg)} }
+
+        /* REVEAL OVERLAY - Doğru cevap gösterimi */
+        .reveal-overlay {
+            position:absolute; inset:0; background:rgba(0,0,0,0.85); z-index:200;
+            display:none; justify-content:center; align-items:center; flex-direction:column;
+            border-radius:30px; padding:30px; gap:15px;
+        }
+        .reveal-overlay.active { display:flex; }
+        .reveal-cover {
+            width:150px; height:150px; border-radius:20px; object-fit:cover;
+            box-shadow:0 10px 30px rgba(0,0,0,0.5); border:3px solid #fff;
+        }
+        .reveal-title {
+            font-size:20px; font-weight:900; color:#fff; text-align:center;
+        }
+        .reveal-artist {
+            font-size:16px; font-weight:600; color:var(--gold); text-align:center;
+        }
+        .reveal-link {
+            font-size:13px; color:var(--accent); text-decoration:underline;
+            cursor:pointer; text-align:center; word-break:break-all;
+        }
+
+        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; }
+        .header .logo { font-weight:900; font-size:18px; }
+        .icon-btn {
+            width:40px; height:40px; border-radius:50%; border:none; background:var(--bg);
+            font-size:18px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.08); transition:0.2s;
+            display:flex; align-items:center; justify-content:center;
+        }
+
+        .btn {
+            border:none; cursor:pointer; font-weight:700; border-radius:20px; padding:14px;
+            font-size:15px; transition:0.2s; background:var(--accent); color:#fff;
+            text-align:center; box-shadow:0 4px 15px rgba(108,92,231,0.3);
+        }
+        .btn:active { transform:scale(0.95); }
+        .btn.outline { background:transparent; border:2px solid var(--accent); color:var(--accent); box-shadow:none; }
+        .btn.gold { background:var(--gold); color:#fff; }
+        .btn.small { padding:8px 16px; font-size:13px; border-radius:15px; }
+
+        .cats { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+        .cat {
+            padding:16px 10px; border-radius:18px; text-align:center; font-weight:700;
+            font-size:13px; cursor:pointer; border:2px solid #e0e0e0; background:#fff; transition:0.2s;
+        }
+        .cat.selected { background:var(--accent); color:#fff; border-color:var(--accent); transform:scale(1.03); }
+        .cat .emoji { font-size:26px; display:block; margin-bottom:4px; }
+
+        .game-stats { display:flex; gap:8px; margin-bottom:10px; align-items:center; }
+        .stat { background:var(--bg); padding:8px 14px; border-radius:20px; font-weight:700; font-size:13px; flex:1; text-align:center; }
+        .stat.gold { color:#c78500; }
+        .lives { font-size:18px; min-width:50px; text-align:center; }
+
+        .disc {
+            width:120px; height:120px; margin:10px auto; border-radius:50%;
+            background:radial-gradient(circle,#333 15%,#111 50%,#000 85%);
+            display:flex; justify-content:center; align-items:center;
+            animation:spinDisc 3s linear infinite paused; box-shadow:0 8px 30px rgba(0,0,0,0.3);
+        }
+        .disc.playing { animation-play-state:running; }
+        .disc img { width:55px; height:55px; border-radius:50%; object-fit:cover; border:2px solid #000; background:#333; }
+        @keyframes spinDisc { to{transform:rotate(360deg)} }
+
+        .progress { width:100%; height:6px; background:#ddd; border-radius:10px; margin:10px 0; overflow:hidden; }
+        .progress .bar { width:0%; height:100%; background:var(--accent); border-radius:10px; transition:width 0.1s; }
+        .timer { text-align:center; font-weight:800; font-size:14px; color:var(--accent); margin-bottom:5px; }
+
+        .jokers { display:flex; gap:6px; margin:8px 0; }
+        .joker {
+            flex:1; padding:10px 5px; border-radius:14px; font-size:11px; font-weight:700;
+            text-align:center; cursor:pointer; border:2px solid var(--gold); background:#fff8e1; color:#c78500;
+        }
+        .joker.used { opacity:0.4; pointer-events:none; }
+
+        .options { display:flex; flex-direction:column; gap:8px; margin:10px 0; }
+        .option {
+            padding:14px; border-radius:16px; font-weight:600; font-size:13px;
+            cursor:pointer; border:2px solid #e0e0e0; background:#fff; text-align:left;
+        }
+        .option.correct { background:var(--success)!important; color:#fff!important; border-color:var(--success)!important; pointer-events:none; }
+        .option.wrong { background:var(--error)!important; color:#fff!important; border-color:var(--error)!important; pointer-events:none; }
+        .option.hidden { opacity:0.15; pointer-events:none; }
+
+        .market-item {
+            display:flex; align-items:center; padding:16px; border-radius:18px;
+            background:#fff; margin-bottom:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06); gap:12px;
+        }
+        .m-emoji { font-size:36px; } .m-info { flex:1; } .m-name { font-weight:700; font-size:15px; }
+        .m-desc { font-size:12px; color:#888; } .m-cost { font-weight:700; color:var(--gold); font-size:13px; }
+
+        .lb-item {
+            display:flex; align-items:center; padding:12px; border-radius:14px;
+            background:#fff; margin-bottom:6px; gap:10px; box-shadow:0 1px 4px rgba(0,0,0,0.04);
+        }
+        .lb-rank { font-size:24px; width:35px; text-align:center; }
+        .lb-name { flex:1; font-weight:600; font-size:14px; }
+        .lb-score { font-weight:800; color:var(--accent); }
+
+        .toast {
+            position:fixed; top:20px; left:50%; transform:translateX(-50%);
+            background:#333; color:#fff; padding:12px 24px; border-radius:30px;
+            font-weight:700; font-size:13px; z-index:9999; pointer-events:none;
+            animation:slideDown 0.3s ease;
+        }
+        @keyframes slideDown { from{opacity:0;transform:translateX(-50%) translateY(-30px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+        .lang-row { display:flex; gap:8px; justify-content:center; margin:10px 0; }
+        .setting-row {
+            display:flex; justify-content:space-between; align-items:center;
+            padding:16px; background:#fff; border-radius:16px; margin:8px 0; box-shadow:0 2px 8px rgba(0,0,0,0.05);
+        }
+        .play-btn {
+            width:50px; height:50px; border-radius:50%; border:none;
+            background:var(--accent); color:#fff; font-size:20px;
+            cursor:pointer; margin:5px auto; display:flex;
+            align-items:center; justify-content:center;
+            box-shadow:0 4px 15px rgba(108,92,231,0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="intro">
+        <div class="icon">🎧</div>
+        <div class="title">MUSIC QUIZ</div>
+        <div class="sub">by ÇAĞDAŞ</div>
+    </div>
+
+    <div class="app" id="app">
+        <!-- DOĞRU CEVAP OVERLAY -->
+        <div class="reveal-overlay" id="revealOverlay">
+            <img class="reveal-cover" id="revealCover" src="" alt="Kapak">
+            <div class="reveal-artist" id="revealArtist"></div>
+            <div class="reveal-title" id="revealTitle"></div>
+            <a class="reveal-link" id="revealLink" href="#" target="_blank">🎵 iTunes'da Dinle</a>
+            <p style="color:#0f0;font-weight:800;font-size:18px;">✅ DOĞRU! +<span id="revealPoints">0</span> puan</p>
+        </div>
+
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <p style="color:#fff;margin-top:10px;font-weight:700;">🎵 iTunes'dan şarkılar yükleniyor...</p>
+        </div>
+
+        <!-- MENÜ -->
+        <div class="screen active" id="menu">
+            <div class="header">
+                <div class="logo">🎧 Music Quiz PRO</div>
+                <div style="display:flex;gap:8px;">
+                    <button class="icon-btn" onclick="showScreen('market')">🛒</button>
+                    <button class="icon-btn" onclick="showScreen('leaderboard')">🏆</button>
+                    <button class="icon-btn" onclick="showScreen('settings')">⚙️</button>
+                </div>
+            </div>
+            <div class="lang-row">
+                <button class="btn small" id="btnTR" onclick="setLang('tr')">🇹🇷 Türkçe</button>
+                <button class="btn small outline" id="btnEN" onclick="setLang('en')">🇬🇧 English</button>
+            </div>
+            <p style="text-align:center;font-size:11px;color:#888;margin:5px 0;">En az 1, en fazla 3 kategori</p>
+            <div class="cats" id="categories"></div>
+            <button class="btn" style="margin-top:auto;font-size:17px;padding:18px;" onclick="startGame()">▶ BAŞLAT</button>
+        </div>
+
+        <!-- OYUN -->
+        <div class="screen" id="game">
+            <div class="game-stats">
+                <div class="stat" id="scoreBadge">⭐ 0</div>
+                <div class="stat gold" id="goldBadge">🪙 0</div>
+                <div class="lives" id="livesBadge">❤️❤️❤️</div>
+                <button class="icon-btn" onclick="quitGame()">🏠</button>
+            </div>
+            <div class="disc" id="disc">
+                <img id="albumArt" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23333' width='100' height='100'/><text x='50' y='55' text-anchor='middle' fill='white' font-size='14'>🎵</text></svg>" alt="Album">
+            </div>
+            <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
+            <div class="progress"><div class="bar" id="progressBar"></div></div>
+            <div class="timer" id="timerText">⏱ 15</div>
+            <div class="jokers" id="jokerArea"></div>
+            <div id="gameContent" style="flex:1;display:flex;flex-direction:column;"></div>
+            <button class="btn outline small" style="margin-top:5px;" onclick="skipTrack()">⏭ Geç (-1 Can)</button>
+        </div>
+
+        <!-- MARKET -->
+        <div class="screen" id="market">
+            <div class="header"><div class="logo">🛒 Joker Market</div><button class="btn small outline" onclick="showScreen('menu')">← Geri</button></div>
+            <p style="font-weight:700;margin-bottom:10px;">🪙 Altın: <span id="marketGold">0</span></p>
+            <div id="marketItems"></div>
+        </div>
+
+        <!-- LİDER TABLOSU -->
+        <div class="screen" id="leaderboard">
+            <div class="header"><div class="logo">🏆 Lider Tablosu</div><button class="btn small outline" onclick="showScreen('menu')">← Geri</button></div>
+            <div id="lbList"></div>
+            <button class="btn outline small" style="margin-top:10px;" onclick="resetLB()">🗑 Sıfırla</button>
+        </div>
+
+        <!-- AYARLAR -->
+        <div class="screen" id="settings">
+            <div class="header"><div class="logo">⚙️ Ayarlar</div><button class="btn small outline" onclick="showScreen('menu')">← Geri</button></div>
+            <div class="setting-row"><span>🌙 Karanlık Mod</span><button class="btn small" id="darkToggle" onclick="toggleDark()">KAPALI</button></div>
+            <div class="setting-row"><span>🔊 Ses Efektleri</span><button class="btn small" id="sfxToggle" onclick="toggleSFX()">AÇIK</button></div>
+        </div>
+    </div>
+
+    <script>
+        let lang='tr',selectedCats=[],score=0,gold=500,lives=3,gameActive=!1,allTracks=[],usedTracks=new Set,currentTrack=null,timerInterval=null,timeLeft=15,timerFrozen=!1,sfxOn=!0,darkOn=!1,isPlaying=!1,jokersOwned={fifty:3,freeze:2};
+        const audio=new Audio;
+        const CORS_PROXIES=['https://api.allorigins.win/raw?url=','https://corsproxy.io/?','https://api.codetabs.com/v1/proxy?quest='];
+        const searchTerms={tr:['Tarkan','Sezen+Aksu','Hadise','Sıla','Duman','Şebnem+Ferah','Ceza','Ezhel','Neşet+Ertaş','Barış+Manço','MFÖ','Hande+Yener'],en:['Taylor+Swift','Ed+Sheeran','Dua+Lipa','Queen','Nirvana','Eminem','Drake','Michael+Jackson','Madonna','Beyonce','Adele','Bruno+Mars']};
+        const categoriesData={tr:[{id:'all_tr',emoji:'🎵',label:'TÜMÜ'},{id:'pop_tr',emoji:'🎤',label:'POP'},{id:'rock_tr',emoji:'🎸',label:'ROCK'},{id:'rap_tr',emoji:'🎧',label:'RAP'},{id:'turku',emoji:'🪕',label:'TÜRKÜ'},{id:'80_tr',emoji:'🕺',label:'80LER'},{id:'90_tr',emoji:'📻',label:'90LAR'},{id:'2000_tr',emoji:'💿',label:'2000LER'}],en:[{id:'all_en',emoji:'🎵',label:'ALL'},{id:'pop_en',emoji:'🌟',label:'POP'},{id:'rock_en',emoji:'🤘',label:'ROCK'},{id:'rap_en',emoji:'🎤',label:'RAP'},{id:'80_en',emoji:'💃',label:'80S'},{id:'90_en',emoji:'📀',label:'90S'},{id:'2000_en',emoji:'💎',label:'2000S'},{id:'2010_en',emoji:'🔮',label:'2010S'}]};
+
+        async function fetchWithProxy(url){try{const r=await fetch(url);if(r.ok)return await r.json()}catch(e){}for(const p of CORS_PROXIES){try{const r=await fetch(p+encodeURIComponent(url));if(r.ok)return await r.json()}catch(e){}}return null}
+
+        function init(){
+            loadState();renderCategories();renderMarket();renderLeaderboard();updateAllUI();
+            setTimeout(()=>{const i=document.getElementById('intro');if(i)i.style.display='none'},3000);
+            audio.addEventListener('timeupdate',()=>{if(audio.duration&&isFinite(audio.duration))document.getElementById('progressBar').style.width=Math.min((audio.currentTime/audio.duration)*100,100)+'%'});
+            audio.addEventListener('ended',()=>{document.getElementById('disc').classList.remove('playing');document.getElementById('playBtn').textContent='▶';isPlaying=!1});
+            audio.addEventListener('playing',()=>{document.getElementById('disc').classList.add('playing');document.getElementById('playBtn').textContent='⏸';isPlaying=!0});
+            audio.addEventListener('pause',()=>{document.getElementById('disc').classList.remove('playing');document.getElementById('playBtn').textContent='▶';isPlaying=!1});
+        }
+        function loadState(){
+            gold=parseInt(localStorage.getItem('mq_gold')||'500');sfxOn=localStorage.getItem('mq_sfx')!=='false';darkOn=localStorage.getItem('mq_dark')==='true';
+            if(darkOn)document.getElementById('app').classList.add('dark');
+            document.getElementById('darkToggle').textContent=darkOn?'AÇIK':'KAPALI';document.getElementById('sfxToggle').textContent=sfxOn?'AÇIK':'KAPALI';
+            const j=localStorage.getItem('mq_jokers');if(j)jokersOwned=JSON.parse(j);
+        }
+        function saveState(){localStorage.setItem('mq_gold',gold);localStorage.setItem('mq_sfx',sfxOn);localStorage.setItem('mq_dark',darkOn);localStorage.setItem('mq_jokers',JSON.stringify(jokersOwned))}
+        function togglePlay(){if(!audio.src)return;if(isPlaying)audio.pause();else audio.play().catch(e=>toast('⚠ Müzik başlatılamadı!'))}
+        function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');if(id==='market')renderMarket();if(id==='leaderboard')renderLeaderboard()}
+        function setLang(l){lang=l;selectedCats=[];document.getElementById('btnTR').className=l==='tr'?'btn small':'btn small outline';document.getElementById('btnEN').className=l==='en'?'btn small':'btn small outline';document.querySelectorAll('.cat').forEach(c=>c.classList.remove('selected'));renderCategories()}
+        function renderCategories(){document.getElementById('categories').innerHTML=categoriesData[lang].map(c=>`<div class="cat" data-id="${c.id}" onclick="toggleCat('${c.id}',this)"><span class="emoji">${c.emoji}</span>${c.label}</div>`).join('')}
+        function toggleCat(id,el){if(selectedCats.includes(id)){selectedCats=selectedCats.filter(c=>c!==id);el.classList.remove('selected')}else if(selectedCats.length<3){selectedCats.push(id);el.classList.add('selected')}else toast('En fazla 3 kategori!')}
+
+        async function startGame(){
+            if(!selectedCats.length)return toast('Kategori seçin!');
+            document.getElementById('loader').classList.add('active');gameActive=!0;score=0;lives=3;usedTracks.clear();timerFrozen=!1;timeLeft=15;allTracks=[];
+            try{
+                const terms=searchTerms[lang]||searchTerms['en'];let all=[];
+                for(const t of terms.slice(0,8)){const d=await fetchWithProxy(`https://itunes.apple.com/search?term=${t}&limit=15&entity=song&country=${lang==='tr'?'tr':'us'}`);if(d&&d.results)all.push(...d.results.filter(s=>s.previewUrl&&s.trackName&&s.artistName))}
+                const seen=new Set;allTracks=all.filter(t=>{if(seen.has(t.trackId))return!1;seen.add(t.trackId);return!0});
+                if(allTracks.length<4)throw new Error('Yetersiz');
+                shuffle(allTracks);showScreen('game');updateGameUI();renderJokers();nextRound();
+            }catch(e){toast('⚠ Şarkı yüklenemedi!');showScreen('menu')}finally{document.getElementById('loader').classList.remove('active')}
+        }
+
+        function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}}
+        function nextRound(){
+            if(!gameActive||lives<=0){endGame();return}
+            clearInterval(timerInterval);timeLeft=15;timerFrozen=!1;audio.pause();audio.src='';isPlaying=!1;
+            document.getElementById('playBtn').textContent='▶';document.getElementById('disc').classList.remove('playing');
+            const avail=allTracks.filter(t=>!usedTracks.has(t.trackId));if(!avail.length){usedTracks.clear();avail.push(...allTracks)}
+            currentTrack=avail[Math.floor(Math.random()*avail.length)];usedTracks.add(currentTrack.trackId);
+
+            const art=document.getElementById('albumArt');art.src=currentTrack.artworkUrl100.replace('100x100','300x300');
+            art.onerror=()=>{art.src='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23333" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="white" font-size="14">🎵</text></svg>'}
+            document.getElementById('progressBar').style.width='0%';document.getElementById('timerText').textContent='⏱ 15';
+            audio.src=currentTrack.previewUrl;audio.load();
+            setTimeout(()=>{audio.play().then(()=>console.log('✅ Çalıyor')).catch(()=>{})},500);
+            renderJokers();renderGameContent();startTimer();
+        }
+
+        function startTimer(){
+            clearInterval(timerInterval);
+            timerInterval=setInterval(()=>{
+                if(!gameActive){clearInterval(timerInterval);return}
+                if(!timerFrozen){timeLeft--;document.getElementById('timerText').textContent='⏱ '+Math.max(timeLeft,0);document.getElementById('progressBar').style.width=((15-timeLeft)/15*100)+'%'}
+                if(timeLeft<=0&&!timerFrozen){clearInterval(timerInterval);lives--;playSFX('wrong');updateGameUI();if(lives<=0)endGame();else{toast('Süre doldu! -1 Can');setTimeout(nextRound,1000)}}
+            },1000);
+        }
+
+        function renderGameContent(){
+            const c=document.getElementById('gameContent');c.innerHTML='';if(!currentTrack)return;
+            const opts=[currentTrack];const pool=allTracks.filter(t=>t.trackId!==currentTrack.trackId);shuffle(pool);
+            for(const t of pool){if(opts.length>=4)break;opts.push(t)}
+            while(opts.length<4)opts.push({trackId:'x'+opts.length,trackName:'???',artistName:'???'});
+            shuffle(opts);
+            const ow=document.createElement('div');ow.className='options';
+            opts.forEach(o=>{const b=document.createElement('div');b.className='option';b.textContent=o.trackName;b.onclick=()=>handleAnswer(o,b,ow);ow.appendChild(b)});
+            c.appendChild(ow);
+        }
+
+        function handleAnswer(sel,el,wrap){
+            if(!gameActive)return;
+            const all=wrap.querySelectorAll('.option');all.forEach(b=>b.style.pointerEvents='none');
+            clearInterval(timerInterval);audio.pause();isPlaying=!1;
+            document.getElementById('playBtn').textContent='▶';document.getElementById('disc').classList.remove('playing');
+            if(sel.trackId===currentTrack.trackId){
+                el.classList.add('correct');const bonus=timeLeft>=11?50:timeLeft>=6?25:10;const pts=25+bonus;score+=pts;gold+=Math.floor(pts/2);playSFX('correct');
+                // DOĞRU CEVAP GÖSTERİMİ
+                showReveal(pts);
+                updateGameUI();saveState();
+                setTimeout(()=>{hideReveal();if(lives<=0)endGame();else nextRound()},3000);
+            }else{
+                el.classList.add('wrong');all.forEach(b=>{if(b.textContent===currentTrack.trackName)b.classList.add('correct')});lives--;playSFX('wrong');
+                updateGameUI();saveState();
+                if(lives<=0)setTimeout(endGame,800);else setTimeout(nextRound,1500);
+            }
+        }
+
+        function showReveal(pts){
+            document.getElementById('revealCover').src=currentTrack.artworkUrl100.replace('100x100','300x300');
+            document.getElementById('revealArtist').textContent=currentTrack.artistName;
+            document.getElementById('revealTitle').textContent=currentTrack.trackName;
+            document.getElementById('revealLink').href=currentTrack.trackViewUrl||'#';
+            document.getElementById('revealPoints').textContent=pts;
+            document.getElementById('revealOverlay').classList.add('active');
+        }
+        function hideReveal(){document.getElementById('revealOverlay').classList.remove('active')}
+
+        function renderJokers(){
+            const a=document.getElementById('jokerArea');a.innerHTML='';
+            [{id:'fifty',emoji:'⚖️',label:'50:50',act:useJokerFifty},{id:'freeze',emoji:'⏳',label:'Dondur',act:useJokerFreeze}].forEach(j=>{
+                const o=jokersOwned[j.id]||0;const d=document.createElement('div');d.className='joker'+(o<=0?' used':'');
+                d.innerHTML=`${j.emoji} ${j.label}<br><small>${o} adet</small>`;d.onclick=()=>{if(o>0){jokersOwned[j.id]--;saveState();j.act();renderJokers()}else toast('Joker yok!')};a.appendChild(d);
+            });
+        }
+        function useJokerFifty(){const all=document.querySelectorAll('.option');const correct=currentTrack.trackName;Array.from(all).filter(b=>b.textContent!==correct&&!b.classList.contains('hidden')).slice(0,2).forEach(b=>b.classList.add('hidden'));playSFX('correct');toast('⚖️ 50:50!')}
+        function useJokerFreeze(){timerFrozen=!0;toast('⏳ Donduruldu! (5sn)');setTimeout(()=>{if(gameActive){timerFrozen=!1;toast('⏳ Devam')}},5000)}
+        function skipTrack(){if(!gameActive)return;lives--;playSFX('wrong');updateGameUI();if(lives<=0)endGame();else nextRound()}
+        function quitGame(){if(confirm('Çıkmak istediğine emin misin?')){gameActive=!1;clearInterval(timerInterval);audio.pause();audio.src='';isPlaying=!1;document.getElementById('disc').classList.remove('playing');showScreen('menu')}}
+        function updateGameUI(){document.getElementById('scoreBadge').textContent='⭐ '+score;document.getElementById('goldBadge').textContent='🪙 '+gold;document.getElementById('livesBadge').textContent='❤️'.repeat(Math.max(lives,0))||'💀';if(lives<=0)gameActive=!1}
+        function updateAllUI(){document.getElementById('marketGold').textContent=gold;updateGameUI()}
+        function endGame(){gameActive=!1;clearInterval(timerInterval);audio.pause();audio.src='';isPlaying=!1;document.getElementById('disc').classList.remove('playing');document.getElementById('playBtn').textContent='▶';saveLeaderboard(score);playSFX('gameover');toast('Oyun bitti! Skor: '+score);setTimeout(()=>{alert('🎯 Oyun Bitti!\n\nSkor: '+score+'\nAltın: '+gold);showScreen('menu')},500)}
+        function renderMarket(){document.getElementById('marketGold').textContent=gold;document.getElementById('marketItems').innerHTML=[{id:'fifty',emoji:'⚖️',name:'50:50',desc:'İki yanlışı eler',cost:75},{id:'freeze',emoji:'⏳',name:'Dondurucu',desc:'5 saniye',cost:100}].map(i=>`<div class="market-item"><div class="m-emoji">${i.emoji}</div><div class="m-info"><div class="m-name">${i.name}</div><div class="m-desc">${i.desc}</div></div><div class="m-cost">${i.cost} 🪙</div><button class="btn small gold" onclick="buyJoker('${i.id}',${i.cost})">Al</button></div>`).join('')}
+        function buyJoker(id,cost){if(gold>=cost){gold-=cost;jokersOwned[id]=(jokersOwned[id]||0)+1;saveState();updateAllUI();renderMarket();playSFX('correct');toast('✅ Alındı!')}else toast('❌ Yetersiz!')}
+        function getLB(){try{return JSON.parse(localStorage.getItem('mq_lb')||'[]')}catch(e){return[]}}
+        function saveLeaderboard(s){const lb=getLB();lb.push({score:s,date:new Date().toLocaleDateString('tr-TR')});lb.sort((a,b)=>b.score-a.score);localStorage.setItem('mq_lb',JSON.stringify(lb.slice(0,10)))}
+        function renderLeaderboard(){const lb=getLB();document.getElementById('lbList').innerHTML=lb.length?lb.map((e,i)=>`<div class="lb-item"><div class="lb-rank">${['🥇','🥈','🥉'][i]||(i+1+'.')}</div><div class="lb-name">${e.date}</div><div class="lb-score">⭐ ${e.score}</div></div>`).join(''):'<div class="lb-item"><span>🏆 Henüz skor yok</span></div>'}
+        function resetLB(){if(confirm('Sıfırlansın mı?')){localStorage.removeItem('mq_lb');renderLeaderboard();toast('🗑 Sıfırlandı')}}
+        function toggleDark(){darkOn=!darkOn;document.getElementById('app').classList.toggle('dark',darkOn);document.getElementById('darkToggle').textContent=darkOn?'AÇIK':'KAPALI';saveState()}
+        function toggleSFX(){sfxOn=!sfxOn;document.getElementById('sfxToggle').textContent=sfxOn?'AÇIK':'KAPALI';saveState()}
+        function playSFX(type){if(!sfxOn)return;try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator();const g=ctx.createGain();o.connect(g);g.connect(ctx.destination);g.gain.value=0.07;const t=ctx.currentTime;if(type==='correct'){o.type='sine';o.frequency.setValueAtTime(660,t);o.frequency.setValueAtTime(880,t+0.1);g.gain.exponentialRampToValueAtTime(0.001,t+0.25);o.start(t);o.stop(t+0.25)}else if(type==='wrong'){o.type='sawtooth';o.frequency.setValueAtTime(180,t);o.frequency.setValueAtTime(100,t+0.2);g.gain.exponentialRampToValueAtTime(0.001,t+0.3);o.start(t);o.stop(t+0.3)}else if(type==='gameover'){o.type='sine';o.frequency.setValueAtTime(380,t);o.frequency.setValueAtTime(280,t+0.3);o.frequency.setValueAtTime(180,t+0.6);g.gain.setValueAtTime(0.1,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.8);o.start(t);o.stop(t+0.8)}}catch(e){}}
+        function toast(msg){const old=document.querySelector('.toast');if(old)old.remove();const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500)}
+        init();
+    </script>
+</body>
+</html>
+   
