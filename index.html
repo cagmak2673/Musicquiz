@@ -4,379 +4,912 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Music Quiz PRO by Çağdaş</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #f0f2f5; --card: #ffffff; --accent: #6c5ce7; --gold: #f0a500;
-            --success: #00b894; --error: #e74c3c; --text: #2d3436; --shadow: 0 4px 15px rgba(0,0,0,0.1);
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --accent-grad: linear-gradient(135deg, #FF416C, #FF4B2B);
+            --accent: #FF416C;
+            --accent-hover: #ff2a55;
+            --accent2: #ff768e;
+            --gold: #F5A623;
+            --gold-grad: linear-gradient(135deg, #F5A623, #F8E71C);
+            --success: #10B981;
+            --error: #EF4444;
+            --text: #1f2937;
+            --text2: #6b7280;
+            --border: #e5e7eb;
+            --shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
+            --shadow-hover: 0 25px 50px -12px rgba(255, 65, 108, 0.25);
+            --radius: 28px;
         }
-        .dark { --bg:#1a1d23; --card:#252830; --text:#eee; --shadow:0 4px 15px rgba(0,0,0,0.4); }
-        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+        
+        .dark {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --text2: #94a3b8;
+            --border: #334155;
+            --shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+            --shadow-hover: 0 25px 50px -12px rgba(255, 65, 108, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            font-family: 'Outfit', system-ui, sans-serif;
+        }
+
         body {
-            font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text);
-            min-height:100vh; display:flex; justify-content:center; align-items:center; transition:0.3s; padding:10px;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background 0.4s ease, color 0.4s ease;
+            padding: 12px;
         }
+
         .app {
-            width:420px; max-width:100%; height:90vh; max-height:850px;
-            background:var(--card); border-radius:30px; box-shadow:var(--shadow);
-            display:flex; flex-direction:column; overflow:hidden; position:relative;
+            width: 440px;
+            max-width: 100%;
+            height: 93vh;
+            max-height: 900px;
+            background: var(--card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            transition: background 0.4s ease, box-shadow 0.4s ease;
+            border: 1px solid rgba(255,255,255,0.1);
         }
-        .screen { display:none; flex-direction:column; height:100%; padding:20px; overflow-y:auto; }
-        .screen.active { display:flex; }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            padding: 24px 20px;
+            overflow-y: auto;
+            animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
         #intro {
-            position:fixed; inset:0; background:linear-gradient(135deg,#6c5ce7,#2d3436);
-            z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column;
-            animation:fadeOut 0.5s 2.5s forwards;
-        }
-        #intro .icon { font-size:80px; animation:bounce 2s infinite; }
-        #intro .title { font-size:36px; color:#fff; font-weight:900; letter-spacing:8px; margin-top:15px; }
-        #intro .sub { font-size:16px; color:#a29bfe; font-weight:600; letter-spacing:4px; margin-top:8px; }
-        @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-25px)} }
-        @keyframes fadeOut { to{opacity:0;visibility:hidden} }
-
-        .loader {
-            position:absolute; inset:0; background:rgba(0,0,0,0.7); z-index:100; display:none;
-            justify-content:center; align-items:center; flex-direction:column; border-radius:30px;
-        }
-        .loader.active { display:flex; }
-        .spinner { width:50px; height:50px; border:4px solid #fff; border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; }
-        @keyframes spin { to{transform:rotate(360deg)} }
-
-        /* REVEAL OVERLAY - Doğru cevap gösterimi */
-        .reveal-overlay {
-            position:absolute; inset:0; background:rgba(0,0,0,0.85); z-index:200;
-            display:none; justify-content:center; align-items:center; flex-direction:column;
-            border-radius:30px; padding:30px; gap:15px;
-        }
-        .reveal-overlay.active { display:flex; }
-        .reveal-cover {
-            width:150px; height:150px; border-radius:20px; object-fit:cover;
-            box-shadow:0 10px 30px rgba(0,0,0,0.5); border:3px solid #fff;
-        }
-        .reveal-title {
-            font-size:20px; font-weight:900; color:#fff; text-align:center;
-        }
-        .reveal-artist {
-            font-size:16px; font-weight:600; color:var(--gold); text-align:center;
-        }
-        .reveal-link {
-            font-size:13px; color:var(--accent); text-decoration:underline;
-            cursor:pointer; text-align:center; word-break:break-all;
+            position: fixed;
+            inset: 0;
+            background: var(--accent-grad);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            animation: fadeOut 0.6s 2.2s forwards cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; }
-        .header .logo { font-weight:900; font-size:18px; }
-        .icon-btn {
-            width:40px; height:40px; border-radius:50%; border:none; background:var(--bg);
-            font-size:18px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.08); transition:0.2s;
-            display:flex; align-items:center; justify-content:center;
-        }
+        
+        #intro .icon { font-size: 80px; animation: pulseIcon 1.5s infinite alternate; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.2)); }
+        #intro .title { font-size: 42px; color: #fff; font-weight: 900; letter-spacing: 4px; margin-top: 20px; text-align: center; line-height: 1; }
+        #intro .sub { font-size: 16px; color: rgba(255,255,255,0.8); font-weight: 600; letter-spacing: 2px; margin-top: 12px; background: rgba(0,0,0,0.15); padding: 6px 16px; border-radius: 20px; }
 
-        .btn {
-            border:none; cursor:pointer; font-weight:700; border-radius:20px; padding:14px;
-            font-size:15px; transition:0.2s; background:var(--accent); color:#fff;
-            text-align:center; box-shadow:0 4px 15px rgba(108,92,231,0.3);
-        }
-        .btn:active { transform:scale(0.95); }
-        .btn.outline { background:transparent; border:2px solid var(--accent); color:var(--accent); box-shadow:none; }
-        .btn.gold { background:var(--gold); color:#fff; }
-        .btn.small { padding:8px 16px; font-size:13px; border-radius:15px; }
+        @keyframes pulseIcon { from { transform: scale(1) translateY(0); } to { transform: scale(1.1) translateY(-10px); } }
+        @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
 
-        .cats { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
-        .cat {
-            padding:16px 10px; border-radius:18px; text-align:center; font-weight:700;
-            font-size:13px; cursor:pointer; border:2px solid #e0e0e0; background:#fff; transition:0.2s;
+        .loader, .reveal-overlay {
+            position: absolute; inset: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px); z-index: 100; display: none; justify-content: center; align-items: center;
+            flex-direction: column; border-radius: var(--radius);
         }
-        .cat.selected { background:var(--accent); color:#fff; border-color:var(--accent); transform:scale(1.03); }
-        .cat .emoji { font-size:26px; display:block; margin-bottom:4px; }
+        .loader.active, .reveal-overlay.active { display: flex; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        .game-stats { display:flex; gap:8px; margin-bottom:10px; align-items:center; }
-        .stat { background:var(--bg); padding:8px 14px; border-radius:20px; font-weight:700; font-size:13px; flex:1; text-align:center; }
-        .stat.gold { color:#c78500; }
-        .lives { font-size:18px; min-width:50px; text-align:center; }
+        .spinner { width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.1); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        .disc {
-            width:120px; height:120px; margin:10px auto; border-radius:50%;
-            background:radial-gradient(circle,#333 15%,#111 50%,#000 85%);
-            display:flex; justify-content:center; align-items:center;
-            animation:spinDisc 3s linear infinite paused; box-shadow:0 8px 30px rgba(0,0,0,0.3);
-        }
-        .disc.playing { animation-play-state:running; }
-        .disc img { width:55px; height:55px; border-radius:50%; object-fit:cover; border:2px solid #000; background:#333; }
-        @keyframes spinDisc { to{transform:rotate(360deg)} }
+        .reveal-cover { width: 160px; height: 160px; border-radius: 24px; object-fit: cover; box-shadow: 0 20px 40px rgba(0,0,0,0.4); border: 4px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        .reveal-title { font-size: 24px; font-weight: 800; color: #fff; text-align: center; line-height: 1.2; }
+        .reveal-artist { font-size: 16px; font-weight: 600; color: var(--gold); text-align: center; margin-bottom: 8px; }
+        .reveal-link { font-size: 14px; color: #fff; text-decoration: none; background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 20px; margin: 15px 0; transition: 0.2s; }
+        .reveal-link:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
 
-        .progress { width:100%; height:6px; background:#ddd; border-radius:10px; margin:10px 0; overflow:hidden; }
-        .progress .bar { width:0%; height:100%; background:var(--accent); border-radius:10px; transition:width 0.1s; }
-        .timer { text-align:center; font-weight:800; font-size:14px; color:var(--accent); margin-bottom:5px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .logo { font-weight: 900; font-size: 22px; background: var(--accent-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.5px; }
 
-        .jokers { display:flex; gap:6px; margin:8px 0; }
-        .joker {
-            flex:1; padding:10px 5px; border-radius:14px; font-size:11px; font-weight:700;
-            text-align:center; cursor:pointer; border:2px solid var(--gold); background:#fff8e1; color:#c78500;
-        }
-        .joker.used { opacity:0.4; pointer-events:none; }
+        .icon-btn { width: 44px; height: 44px; border-radius: 16px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 20px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+        .icon-btn:active { transform: scale(0.9); background: var(--border); }
 
-        .options { display:flex; flex-direction:column; gap:8px; margin:10px 0; }
-        .option {
-            padding:14px; border-radius:16px; font-weight:600; font-size:13px;
-            cursor:pointer; border:2px solid #e0e0e0; background:#fff; text-align:left;
-        }
-        .option.correct { background:var(--success)!important; color:#fff!important; border-color:var(--success)!important; pointer-events:none; }
-        .option.wrong { background:var(--error)!important; color:#fff!important; border-color:var(--error)!important; pointer-events:none; }
-        .option.hidden { opacity:0.15; pointer-events:none; }
+        .btn { border: none; cursor: pointer; font-weight: 700; border-radius: 16px; padding: 16px; font-size: 16px; transition: all 0.2s; background: var(--accent-grad); color: #fff; text-align: center; box-shadow: 0 8px 20px -6px rgba(255, 65, 108, 0.5); font-family: 'Outfit', sans-serif; letter-spacing: 0.5px; }
+        .btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+        .btn:active { transform: scale(0.96) translateY(0); }
+        .btn.outline { background: transparent; border: 2px solid var(--accent); color: var(--accent); box-shadow: none; }
+        .btn.outline:hover { background: rgba(255, 65, 108, 0.05); }
+        .btn.gold { background: var(--gold-grad); color: #fff; box-shadow: 0 8px 20px -6px rgba(245, 166, 35, 0.5); }
+        .btn.small { padding: 10px 18px; font-size: 14px; border-radius: 14px; }
+        .btn:disabled { opacity: 0.6; pointer-events: none; filter: grayscale(1); }
 
-        .market-item {
-            display:flex; align-items:center; padding:16px; border-radius:18px;
-            background:#fff; margin-bottom:10px; box-shadow:0 2px 8px rgba(0,0,0,0.06); gap:12px;
-        }
-        .m-emoji { font-size:36px; } .m-info { flex:1; } .m-name { font-weight:700; font-size:15px; }
-        .m-desc { font-size:12px; color:#888; } .m-cost { font-weight:700; color:var(--gold); font-size:13px; }
+        .mode-cards { display: flex; flex-direction: column; gap: 16px; margin: 10px 0; }
+        .mode-card { padding: 24px; border-radius: 24px; text-align: left; cursor: pointer; border: 2px solid var(--border); background: var(--card); transition: all 0.3s; display: flex; align-items: center; gap: 16px; }
+        .mode-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: var(--shadow); }
+        .mode-card:active { transform: scale(0.98); }
+        .mode-emoji { font-size: 42px; background: var(--bg); width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; border-radius: 20px; }
+        .mode-info { flex: 1; }
+        .mode-name { font-weight: 800; font-size: 19px; display: block; margin-bottom: 4px; }
+        .mode-desc { font-size: 13px; color: var(--text2); font-weight: 500; }
 
-        .lb-item {
-            display:flex; align-items:center; padding:12px; border-radius:14px;
-            background:#fff; margin-bottom:6px; gap:10px; box-shadow:0 1px 4px rgba(0,0,0,0.04);
-        }
-        .lb-rank { font-size:24px; width:35px; text-align:center; }
-        .lb-name { flex:1; font-weight:600; font-size:14px; }
-        .lb-score { font-weight:800; color:var(--accent); }
+        .cats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+        .multi-cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0; }
+        .cat, .multi-cat { padding: 16px 12px; border-radius: 18px; text-align: center; font-weight: 700; font-size: 14px; cursor: pointer; border: 2px solid var(--border); background: var(--bg); transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--text); }
+        .multi-cat { padding: 12px 8px; font-size: 12px; border-radius: 14px; }
+        .cat .emoji, .multi-cat span { font-size: 26px; }
+        .cat.selected, .multi-cat.selected { background: var(--accent-grad); color: #fff; border-color: transparent; box-shadow: 0 8px 15px -5px rgba(255,65,108,0.4); transform: translateY(-2px); }
 
-        .toast {
-            position:fixed; top:20px; left:50%; transform:translateX(-50%);
-            background:#333; color:#fff; padding:12px 24px; border-radius:30px;
-            font-weight:700; font-size:13px; z-index:9999; pointer-events:none;
-            animation:slideDown 0.3s ease;
-        }
-        @keyframes slideDown { from{opacity:0;transform:translateX(-50%) translateY(-30px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+        .input { width: 100%; padding: 16px 20px; border-radius: 18px; border: 2px solid var(--border); font-size: 16px; font-weight: 600; background: var(--bg); color: var(--text); outline: none; transition: all 0.2s; font-family: 'Outfit', sans-serif; }
+        .input:focus { border-color: var(--accent); background: var(--card); box-shadow: 0 0 0 4px rgba(255,65,108,0.1); }
+        .input.center { text-align: center; letter-spacing: 3px; font-size: 20px; text-transform: uppercase;}
 
-        .lang-row { display:flex; gap:8px; justify-content:center; margin:10px 0; }
-        .setting-row {
-            display:flex; justify-content:space-between; align-items:center;
-            padding:16px; background:#fff; border-radius:16px; margin:8px 0; box-shadow:0 2px 8px rgba(0,0,0,0.05);
-        }
-        .play-btn {
-            width:50px; height:50px; border-radius:50%; border:none;
-            background:var(--accent); color:#fff; font-size:20px;
-            cursor:pointer; margin:5px auto; display:flex;
-            align-items:center; justify-content:center;
-            box-shadow:0 4px 15px rgba(108,92,231,0.4);
-        }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; background: var(--bg); padding: 6px; border-radius: 18px; }
+        .tab { flex: 1; padding: 12px; border-radius: 14px; font-weight: 700; font-size: 14px; text-align: center; cursor: pointer; transition: all 0.2s; color: var(--text2); }
+        .tab.active { background: var(--card); color: var(--accent); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+
+        .game-stats { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; justify-content: space-between; }
+        .stat { background: var(--card); border: 2px solid var(--border); padding: 12px 18px; border-radius: 24px; font-weight: 800; font-size: 16px; flex: 1; text-align: center; display: flex; justify-content: center; align-items: center; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.02); transition: 0.2s; }
+        .stat.score-stat { color: var(--text); }
+        .stat.gold-stat { color: var(--gold); }
+        .stat-icon { font-size: 20px; }
+        .btn-close-game { width: 50px; height: 50px; border-radius: 18px; border: 2px solid var(--error); background: var(--card); color: var(--error); font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.02); }
+        .btn-close-game:active { transform: scale(0.9); background: rgba(239,68,68,0.1); }
+
+        .lobby-header { text-align: center; padding: 24px; background: var(--accent-grad); border-radius: 24px; color: #fff; margin-bottom: 20px; box-shadow: var(--shadow); }
+        .room-code { font-size: 42px; font-weight: 900; letter-spacing: 12px; background: rgba(0,0,0,0.2); padding: 12px 24px; border-radius: 16px; display: inline-block; margin: 16px 0 8px 0; margin-right: -12px; }
+        .player-list { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
+        .player-card { display: flex; align-items: center; padding: 12px 16px; border-radius: 18px; background: var(--bg); border: 1px solid var(--border); gap: 14px; font-weight: 700; font-size: 15px; }
+        .player-avatar { width: 42px; height: 42px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: var(--card); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .ready-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: auto; box-shadow: 0 0 10px currentColor; }
+        .ready-green { background: var(--success); color: var(--success); }
+        .ready-gray { background: var(--text2); box-shadow: none; }
+
+        .chat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 12px; margin-top: 10px; display: flex; flex-direction: column; height: 180px; }
+        .chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; font-size: 13px; padding-right: 4px; }
+        .chat-msg { padding: 8px 12px; border-radius: 14px; max-width: 85%; word-break: break-word; font-weight: 500; }
+        .chat-msg.mine { background: var(--accent-grad); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .chat-msg.other { background: var(--card); color: var(--text); border: 1px solid var(--border); align-self: flex-start; border-bottom-left-radius: 4px; }
+        .chat-msg.system { background: transparent; color: var(--text2); align-self: center; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;}
+        .chat-input-row { display: flex; gap: 8px; }
+        .chat-input { flex: 1; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--border); font-size: 14px; font-weight: 500; outline: none; background: var(--card); color: var(--text); font-family: 'Outfit'; }
+        .chat-input:focus { border-color: var(--accent); }
+        .chat-send { width: 44px; height: 44px; border-radius: 14px; border: none; background: var(--accent); color: #fff; cursor: pointer; font-size: 18px; transition: 0.2s; }
+        .chat-send:active { transform: scale(0.9); }
+
+        .disc-wrapper { position: relative; width: 140px; height: 140px; margin: 10px auto; display: flex; justify-content: center; align-items: center; }
+        .disc-glow { position: absolute; inset: -15px; border-radius: 50%; background: var(--accent-grad); opacity: 0; filter: blur(20px); transition: opacity 0.5s ease; }
+        .disc.playing + .disc-glow, .disc-wrapper.playing .disc-glow { opacity: 0.6; animation: pulseGlow 2s infinite alternate; }
+        @keyframes pulseGlow { from { transform: scale(0.95); opacity: 0.4; } to { transform: scale(1.1); opacity: 0.8; } }
+
+        .disc { width: 140px; height: 140px; border-radius: 50%; background: radial-gradient(circle, #2a2a2a 15%, #111 50%, #000 85%); display: flex; justify-content: center; align-items: center; animation: spinDisc 4s linear infinite paused; box-shadow: 0 15px 35px rgba(0,0,0,0.4); position: relative; z-index: 2; border: 4px solid #333; }
+        .disc::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: repeating-radial-gradient(transparent, transparent 4px, rgba(255,255,255,0.03) 5px, rgba(255,255,255,0.03) 6px); }
+        .disc.playing { animation-play-state: running; }
+        .disc img { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; border: 3px solid #111; background: #222; z-index: 3; position: relative; }
+        @keyframes spinDisc { to { transform: rotate(360deg); } }
+
+        
+        .play-controls { display: flex; flex-direction: column; align-items: center; margin-top: -15px; position: relative; z-index: 5;}
+        .play-btn { width: 56px; height: 56px; border-radius: 50%; border: none; background: var(--accent-grad); color: #fff; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(255,65,108,0.4); transition: 0.2s; padding-left: 4px; }
+        .play-btn.is-playing { padding-left: 0; background: #FF4B2B; }
+        .play-btn:active { transform: scale(0.9); }
+
+        .now-playing { text-align: center; font-size: 14px; font-weight: 700; margin: 16px 0 8px 0; color: var(--accent); background: var(--bg); padding: 8px 20px; border-radius: 20px; display: inline-block; border: 1px solid var(--border); }
+
+        .progress { width: 100%; height: 8px; background: var(--border); border-radius: 10px; margin: 10px 0; overflow: hidden; position: relative; }
+        .progress .bar { width: 0%; height: 100%; background: var(--accent-grad); border-radius: 10px; transition: width 0.1s linear; }
+        .timer { text-align: center; font-weight: 900; font-size: 18px; color: var(--text); margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+
+        .jokers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+        .joker { flex: 1; padding: 12px 8px; border-radius: 16px; font-size: 13px; font-weight: 800; text-align: center; cursor: pointer; border: 2px solid var(--gold); background: rgba(245,166,35,0.05); color: var(--gold); transition: 0.2s; display: flex; flex-direction: column; gap: 4px; }
+        .joker:active { transform: scale(0.95); }
+        .joker.used { opacity: 0.4; pointer-events: none; border-color: var(--border); color: var(--text2); background: transparent;}
+        .joker small { font-weight: 600; font-size: 11px; opacity: 0.8; }
+
+        .options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: auto 0; }
+        .option { padding: 18px 12px; border-radius: 20px; font-weight: 700; font-size: 14px; cursor: pointer; border: 2px solid var(--border); background: var(--card); text-align: center; transition: all 0.2s; display: flex; align-items: center; justify-content: center; min-height: 70px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        .option:active { transform: scale(0.95); }
+        .option.correct { background: var(--success) !important; color: #fff !important; border-color: var(--success) !important; box-shadow: 0 8px 20px rgba(16,185,129,0.3) !important; transform: scale(1.02); z-index: 2;}
+        .option.wrong { background: var(--error) !important; color: #fff !important; border-color: var(--error) !important; animation: shake 0.4s; }
+        .option.hidden { opacity: 0; pointer-events: none; transform: scale(0.8); }
+
+        @keyframes shake { 0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)} }
+
+        .market-item, .lb-item, .room-item, .setting-row { display: flex; align-items: center; padding: 16px; border-radius: 20px; background: var(--bg); border: 1px solid var(--border); margin-bottom: 12px; transition: 0.2s; }
+        .room-item { cursor: pointer; }
+        .room-item:hover { border-color: var(--accent); transform: translateX(4px); background: var(--card); }
+        .m-emoji { font-size: 38px; background: var(--card); width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .m-info { flex: 1; margin-left: 16px; }
+        .m-name { font-weight: 800; font-size: 16px; margin-bottom: 2px;}
+        .m-desc { font-size: 12px; color: var(--text2); font-weight: 500; }
+        .m-cost { font-weight: 900; color: var(--gold); font-size: 15px; margin-right: 12px; }
+        .lb-rank { font-size: 24px; width: 40px; text-align: center; font-weight: 900; }
+        .lb-name { flex: 1; font-weight: 700; font-size: 15px; }
+        .lb-score { font-weight: 900; color: var(--accent); background: rgba(255,65,108,0.1); padding: 6px 12px; border-radius: 12px;}
+        .toast { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 14px 28px; border-radius: 30px; font-weight: 700; font-size: 14px; z-index: 9999; pointer-events: none; box-shadow: 0 10px 30px rgba(0,0,0,0.2); animation: slideDown 0.4s cubic-bezier(0.16,1,0.3,1); }
+        @keyframes slideDown { from{opacity:0;transform:translateX(-50%) translateY(-40px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+        .hint-text { text-align: center; font-size: 12px; color: var(--text2); margin-top: 12px; font-weight: 500;}
+        .lang-row { display: flex; gap: 12px; justify-content: center; margin: 16px 0; background: var(--bg); padding: 8px; border-radius: 20px;}
+        .lang-row .btn { flex: 1; }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; } ::-webkit-scrollbar-thumb:hover { background: var(--text2); }
     </style>
 </head>
 <body>
+<div id="intro"><div class="icon">🎧</div><div class="title">MUSIC QUIZ</div><div class="sub">PRO EDITION</div></div>
 
-    <div id="intro">
-        <div class="icon">🎧</div>
-        <div class="title">MUSIC QUIZ</div>
-        <div class="sub">by ÇAĞDAŞ</div>
+    
+<div class="app" id="app">
+    <div class="loader" id="loader"><div class="spinner"></div><p style="color:#fff;margin-top:16px;font-weight:700;letter-spacing:1px;">🎵 Şarkılar Yükleniyor...</p></div>
+    <div class="reveal-overlay" id="revealOverlay">
+        <img class="reveal-cover" id="revealCover" src="" alt="Kapak">
+        <div class="reveal-artist" id="revealArtist"></div>
+        <div class="reveal-title" id="revealTitle"></div>
+        <a class="reveal-link" id="revealLink" href="#" target="_blank">🎵 iTunes'da Dinle</a>
+        <div style="background:var(--success);color:#fff;font-weight:900;font-size:18px;padding:12px 24px;border-radius:20px;margin-top:10px;box-shadow:0 10px 20px rgba(16,185,129,0.3);">✅ DOĞRU! +<span id="revealPoints">0</span> puan</div>
     </div>
 
-    <div class="app" id="app">
-        <!-- DOĞRU CEVAP OVERLAY -->
-        <div class="reveal-overlay" id="revealOverlay">
-            <img class="reveal-cover" id="revealCover" src="" alt="Kapak">
-            <div class="reveal-artist" id="revealArtist"></div>
-            <div class="reveal-title" id="revealTitle"></div>
-            <a class="reveal-link" id="revealLink" href="#" target="_blank">🎵 iTunes'da Dinle</a>
-            <p style="color:#0f0;font-weight:800;font-size:18px;">✅ DOĞRU! +<span id="revealPoints">0</span> puan</p>
-        </div>
-
-        <div class="loader" id="loader">
-            <div class="spinner"></div>
-            <p style="color:#fff;margin-top:10px;font-weight:700;">🎵 iTunes'dan şarkılar yükleniyor...</p>
-        </div>
-
-        <!-- MENÜ -->
-        <div class="screen active" id="menu">
-            <div class="header">
-                <div class="logo">🎧 Music Quiz PRO</div>
-                <div style="display:flex;gap:8px;">
-                    <button class="icon-btn" onclick="showScreen('market')">🛒</button>
-                    <button class="icon-btn" onclick="showScreen('leaderboard')">🏆</button>
-                    <button class="icon-btn" onclick="showScreen('settings')">⚙️</button>
-                </div>
-            </div>
-            <div class="lang-row">
-                <button class="btn small" id="btnTR" onclick="setLang('tr')">🇹🇷 Türkçe</button>
-                <button class="btn small outline" id="btnEN" onclick="setLang('en')">🇬🇧 English</button>
-            </div>
-            <p style="text-align:center;font-size:11px;color:#888;margin:5px 0;">En az 1, en fazla 3 kategori</p>
-            <div class="cats" id="categories"></div>
-            <button class="btn" style="margin-top:auto;font-size:17px;padding:18px;" onclick="startGame()">▶ BAŞLAT</button>
-        </div>
-
-        <!-- OYUN -->
-        <div class="screen" id="game">
-            <div class="game-stats">
-                <div class="stat" id="scoreBadge">⭐ 0</div>
-                <div class="stat gold" id="goldBadge">🪙 0</div>
-                <div class="lives" id="livesBadge">❤️❤️❤️</div>
-                <button class="icon-btn" onclick="quitGame()">🏠</button>
-            </div>
-            <div class="disc" id="disc">
-                <img id="albumArt" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23333' width='100' height='100'/><text x='50' y='55' text-anchor='middle' fill='white' font-size='14'>🎵</text></svg>" alt="Album">
-            </div>
-            <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
-            <div class="progress"><div class="bar" id="progressBar"></div></div>
-            <div class="timer" id="timerText">⏱ 15</div>
-            <div class="jokers" id="jokerArea"></div>
-            <div id="gameContent" style="flex:1;display:flex;flex-direction:column;"></div>
-            <button class="btn outline small" style="margin-top:5px;" onclick="skipTrack()">⏭ Geç (-1 Can)</button>
-        </div>
-
-        <!-- MARKET -->
-        <div class="screen" id="market">
-            <div class="header"><div class="logo">🛒 Joker Market</div><button class="btn small outline" onclick="showScreen('menu')">← Geri</button></div>
-            <p style="font-weight:700;margin-bottom:10px;">🪙 Altın: <span id="marketGold">0</span></p>
-            <div id="marketItems"></div>
-        </div>
-
-        <!-- LİDER TABLOSU -->
-        <div class="screen" id="leaderboard">
-            <div class="header"><div class="logo">🏆 Lider Tablosu</div><button class="btn small outline" onclick="showScreen('menu')">← Geri</button></div>
-            <div id="lbList"></div>
-            <button class="btn outline small" style="margin-top:10px;" onclick="resetLB()">🗑 Sıfırla</button>
-        </div>
-
-        <!-- AYARLAR -->
-        <div class="screen" id="settings">
-            <div class="header"><div class="logo">⚙️ Ayarlar</div><button class="btn small outline" onclick="showScreen('menu')">← Geri</button></div>
-            <div class="setting-row"><span>🌙 Karanlık Mod</span><button class="btn small" id="darkToggle" onclick="toggleDark()">KAPALI</button></div>
-            <div class="setting-row"><span>🔊 Ses Efektleri</span><button class="btn small" id="sfxToggle" onclick="toggleSFX()">AÇIK</button></div>
+    <div class="screen active" id="menu">
+        <div class="header"><div class="logo">🎧 Music Quiz</div><div style="display:flex;gap:8px;"><button class="icon-btn" onclick="showScreen('market')">🛒</button><button class="icon-btn" onclick="showScreen('leaderboard')">🏆</button><button class="icon-btn" onclick="showScreen('settings')">⚙️</button></div></div>
+        <div class="mode-cards" style="margin-top:auto; margin-bottom:auto;">
+            <div class="mode-card" onclick="showScreen('singleplayer')"><div class="mode-emoji">🎮</div><div class="mode-info"><span class="mode-name">Tek Oyuncu</span><span class="mode-desc">Kendini test et, rekor kır</span></div></div>
+            <div class="mode-card" onclick="showScreen('multiplayer')"><div class="mode-emoji">👥</div><div class="mode-info"><span class="mode-name">Çok Oyunculu</span><span class="mode-desc">Arkadaşlarınla online yarış</span></div></div>
         </div>
     </div>
+
+    <div class="screen" id="singleplayer">
+        <div class="header"><div class="logo">🎮 Tek Oyuncu</div><button class="icon-btn" onclick="showScreen('menu')">✕</button></div>
+        <div class="lang-row"><button class="btn small" id="btnTR" onclick="setLang('tr')">🇹🇷 Türkçe</button><button class="btn small outline" id="btnEN" onclick="setLang('en')">🇬🇧 English</button></div>
+        <p class="hint-text">En az 1, en fazla 3 kategori seç</p>
+        <div class="cats" id="categories"></div>
+        <button class="btn" style="margin-top:auto; font-size:18px; padding:20px;" onclick="startSingleGame()">OYUNA BAŞLA</button>
+    </div>
+
+    <div class="screen" id="multiplayer">
+        <div class="header"><div class="logo">👥 Çok Oyunculu</div><button class="icon-btn" onclick="showScreen('menu')">✕</button></div>
+        <div class="tabs"><div class="tab active" onclick="showMultiTab('create')">🏠 Oluştur</div><div class="tab" onclick="showMultiTab('join')">🚪 Katıl</div><div class="tab" onclick="showMultiTab('search')">🔍 Ara</div></div>
+        <div id="tabCreate"><input class="input" id="nicknameCreate" placeholder="Takma adın" maxlength="15"><p class="hint-text" style="margin:16px 0 8px;">Oda Kategorileri (Max 3)</p><div class="multi-cats" id="multiCatsCreate"></div><button class="btn" style="margin-top:16px; width:100%;" onclick="createRoom()">Oda Oluştur</button></div>
+        <div id="tabJoin" style="display:none;"><input class="input" id="nicknameJoin" placeholder="Takma adın" maxlength="15"><input class="input center" id="roomCode" placeholder="ODA KODU" maxlength="6" style="margin-top:16px;"><button class="btn" style="margin-top:16px; width:100%;" onclick="joinRoom()">Odaya Katıl</button></div>
+        <div id="tabSearch" style="display:none;"><input class="input" id="nicknameSearch" placeholder="Takma adın" maxlength="15"><div style="display:flex;align-items:center;gap:12px;margin-top:20px;margin-bottom:8px;"><span style="font-weight:800;font-size:15px;flex:1;">🔍 Açık Odalar</span><button class="icon-btn" style="width:36px;height:36px;font-size:16px;" onclick="searchRooms()">🔄</button></div><div class="room-list" id="roomList" style="overflow-y:auto;flex:1;"><p class="hint-text">Aramak için 🔄 butonuna bas</p></div></div>
+    </div>
+
+    <div class="screen" id="lobby">
+        <div class="lobby-header"><p style="font-size:14px;font-weight:700;opacity:0.9;text-transform:uppercase;letter-spacing:1px;">Katılım Kodu</p><div class="room-code" id="lobbyCode">------</div><p style="font-size:13px;opacity:0.8;">Arkadaşlarınla paylaş</p></div>
+        <h4 style="margin:5px 0;font-size:16px;font-weight:800;">Oyuncular (<span id="playerCount">0</span>/4)</h4>
+        <div class="player-list" id="playerList"></div>
+        <div class="chat-box"><div class="chat-messages" id="chatMessages"></div><div class="chat-input-row"><input class="chat-input" id="chatInput" placeholder="Mesaj yaz..." maxlength="100"><button class="chat-send" onclick="sendChat()">➤</button></div></div>
+        <div style="display:flex; gap:12px; margin-top:16px;"><button class="btn outline" style="flex:0.5; padding:16px 0;" onclick="leaveRoom()">Çık</button><button class="btn" id="btnReady" style="flex:1;" onclick="handleReadyClick()">Hazırım</button></div>
+        <p class="hint-text" id="readyHint">Tüm oyuncular hazır olunca oyun başlar</p>
+    </div>
+
+    <div class="screen" id="game">
+        <div class="game-stats"><div class="stat score-stat"><span class="stat-icon" style="color:#F5A623;">⭐</span> <span id="scoreBadge">0</span></div><div class="stat gold-stat"><span class="stat-icon">🪙</span> <span id="goldBadge">0</span></div><button class="btn-close-game" onclick="quitGame()">✕</button></div>
+        <div class="disc-wrapper" id="discWrapper"><div class="disc" id="disc"><img id="albumArt" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23222' width='100' height='100'/><text x='50' y='55' text-anchor='middle' fill='white' font-size='20'>🎵</text></svg>" alt="Album"></div><div class="disc-glow"></div></div>
+        <div class="play-controls"><button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button><div class="now-playing" id="nowPlaying">🎵 Şarkı Bekleniyor...</div></div>
+        <div class="progress"><div class="bar" id="progressBar"></div></div>
+        <div class="timer" id="timerText">⏱ 15</div>
+        <div class="jokers" id="jokerArea"></div>
+        <div id="gameContent" style="flex:1; display:flex; flex-direction:column;"></div>
+        <div id="miniLB" style="display:none; flex-direction:column; gap:6px; margin-top:12px; padding:12px; background:var(--bg); border-radius:20px; border:1px solid var(--border);"></div>
+    </div>
+
+    <div class="screen" id="market">
+        <div class="header"><div class="logo">🛒 Market</div><button class="icon-btn" onclick="showScreen('menu')">✕</button></div>
+        <div style="background:var(--gold-grad);padding:20px;border-radius:24px;color:#fff;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;box-shadow:0 10px 20px rgba(245,166,35,0.3);"><span style="font-weight:800;font-size:18px;">Bakiye</span><span style="font-weight:900;font-size:24px;" id="marketGold">0 🪙</span></div>
+        <div id="marketItems"></div>
+    </div>
+
+    <div class="screen" id="leaderboard">
+        <div class="header"><div class="logo">🏆 Sıralama</div><button class="icon-btn" onclick="showScreen('menu')">✕</button></div>
+        <div id="lbList" style="flex:1; overflow-y:auto;"></div>
+        <button class="btn outline" style="margin-top:16px;" onclick="resetLB()">Sıfırla</button>
+    </div>
+    <div class="screen" id="multiplayer">
+        <div class="header"><div class="logo">👥 Çok Oyunculu</div><button class="icon-btn" onclick="showScreen('menu')">✕</button></div>
+        <div class="tabs"><div class="tab active" onclick="showMultiTab('create')">🏠 Oluştur</div><div class="tab" onclick="showMultiTab('join')">🚪 Katıl</div><div class="tab" onclick="showMultiTab('search')">🔍 Ara</div></div>
+        <div id="tabCreate"><input class="input" id="nicknameCreate" placeholder="Takma adın" maxlength="15"><p class="hint-text" style="margin:16px 0 8px;">Oda Kategorileri (Max 3)</p><div class="multi-cats" id="multiCatsCreate"></div><button class="btn" style="margin-top:16px; width:100%;" onclick="createRoom()">Oda Oluştur</button></div>
+        <div id="tabJoin" style="display:none;"><input class="input" id="nicknameJoin" placeholder="Takma adın" maxlength="15"><input class="input center" id="roomCode" placeholder="ODA KODU" maxlength="6" style="margin-top:16px;"><button class="btn" style="margin-top:16px; width:100%;" onclick="joinRoom()">Odaya Katıl</button></div>
+        <div id="tabSearch" style="display:none;"><input class="input" id="nicknameSearch" placeholder="Takma adın" maxlength="15"><div style="display:flex;align-items:center;gap:12px;margin-top:20px;margin-bottom:8px;"><span style="font-weight:800;font-size:15px;flex:1;">🔍 Açık Odalar</span><button class="icon-btn" style="width:36px;height:36px;font-size:16px;" onclick="searchRooms()">🔄</button></div><div class="room-list" id="roomList" style="overflow-y:auto;flex:1;"><p class="hint-text">Aramak için 🔄 butonuna bas</p></div></div>
+    </div>
+
+    <div class="screen" id="lobby">
+        <div class="lobby-header"><p style="font-size:14px;font-weight:700;opacity:0.9;text-transform:uppercase;letter-spacing:1px;">Katılım Kodu</p><div class="room-code" id="lobbyCode">------</div><p style="font-size:13px;opacity:0.8;">Arkadaşlarınla paylaş</p></div>
+        <h4 style="margin:5px 0;font-size:16px;font-weight:800;">Oyuncular (<span id="playerCount">0</span>/4)</h4>
+        <div class="player-list" id="playerList"></div>
+        <div class="chat-box"><div class="chat-messages" id="chatMessages"></div><div class="chat-input-row"><input class="chat-input" id="chatInput" placeholder="Mesaj yaz..." maxlength="100"><button class="chat-send" onclick="sendChat()">➤</button></div></div>
+        <div style="display:flex; gap:12px; margin-top:16px;"><button class="btn outline" style="flex:0.5; padding:16px 0;" onclick="leaveRoom()">Çık</button><button class="btn" id="btnReady" style="flex:1;" onclick="handleReadyClick()">Hazırım</button></div>
+        <p class="hint-text" id="readyHint">Tüm oyuncular hazır olunca oyun başlar</p>
+    </div>
+
+    <div class="screen" id="game">
+        <div class="game-stats"><div class="stat score-stat"><span class="stat-icon" style="color:#F5A623;">⭐</span> <span id="scoreBadge">0</span></div><div class="stat gold-stat"><span class="stat-icon">🪙</span> <span id="goldBadge">0</span></div><button class="btn-close-game" onclick="quitGame()">✕</button></div>
+        <div class="disc-wrapper" id="discWrapper"><div class="disc" id="disc"><img id="albumArt" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23222' width='100' height='100'/><text x='50' y='55' text-anchor='middle' fill='white' font-size='20'>🎵</text></svg>" alt="Album"></div><div class="disc-glow"></div></div>
+        <div class="play-controls"><button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button><div class="now-playing" id="nowPlaying">🎵 Şarkı Bekleniyor...</div></div>
+        <div class="progress"><div class="bar" id="progressBar"></div></div>
+        <div class="timer" id="timerText">⏱ 15</div>
+        <div class="jokers" id="jokerArea"></div>
+        <div id="gameContent" style="flex:1; display:flex; flex-direction:column;"></div>
+        <div id="miniLB" style="display:none; flex-direction:column; gap:6px; margin-top:12px; padding:12px; background:var(--bg); border-radius:20px; border:1px solid var(--border);"></div>
+    </div>
+
+    <div class="screen" id="market">
+        <div class="header"><div class="logo">🛒 Market</div><button class="icon-btn" onclick="showScreen('menu')">✕</button></div>
+        <div style="background:var(--gold-grad);padding:20px;border-radius:24px;color:#fff;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;box-shadow:0 10px 20px rgba(245,166,35,0.3);"><span style="font-weight:800;font-size:18px;">Bakiye</span><span style="font-weight:900;font-size:24px;" id="marketGold">0 🪙</span></div>
+        <div id="marketItems"></div>
+    </div>
+
+    <div class="screen" id="leaderboard">
+        <div class="header"><div class="logo">🏆 Sıralama</div><button class="icon-btn" onclick="showScreen('menu')">✕</button></div>
+        <div id="lbList" style="flex:1; overflow-y:auto;"></div>
+        <button class="btn outline" style="margin-top:16px;" onclick="resetLB()">Sıfırla</button>
+    </div>
+
+    <div class="screen" id="settings">
+        <div class="header"><div class="logo">⚙️ Ayarlar</div><button class="icon-btn" onclick="showScreen('menu')">✕</button></div>
+        <div class="setting-row"><span style="font-weight:700;font-size:16px;">🌙 Karanlık Mod</span><button class="btn small" id="darkToggle" onclick="toggleDark()" style="min-width:80px;">KAPALI</button></div>
+        <div class="setting-row"><span style="font-weight:700;font-size:16px;">🔊 Ses Efektleri</span><button class="btn small" id="sfxToggle" onclick="toggleSFX()" style="min-width:80px;">AÇIK</button></div>
+        <div style="margin-top:auto;text-align:center;color:var(--text2);font-size:13px;padding:20px;"><p style="font-weight:800;">Music Quiz PRO</p><p>Geliştirici: Çağdaş</p></div>
+    </div>
+</div>
 
     <script>
-        let lang='tr',selectedCats=[],score=0,gold=500,lives=3,gameActive=!1,allTracks=[],usedTracks=new Set,currentTrack=null,timerInterval=null,timeLeft=15,timerFrozen=!1,sfxOn=!0,darkOn=!1,isPlaying=!1,jokersOwned={fifty:3,freeze:2};
-        const audio=new Audio;
-        const CORS_PROXIES=['https://api.allorigins.win/raw?url=','https://corsproxy.io/?','https://api.codetabs.com/v1/proxy?quest='];
-        const searchTerms={tr:['Tarkan','Sezen+Aksu','Hadise','Sıla','Duman','Şebnem+Ferah','Ceza','Ezhel','Neşet+Ertaş','Barış+Manço','MFÖ','Hande+Yener'],en:['Taylor+Swift','Ed+Sheeran','Dua+Lipa','Queen','Nirvana','Eminem','Drake','Michael+Jackson','Madonna','Beyonce','Adele','Bruno+Mars']};
-        const categoriesData={tr:[{id:'all_tr',emoji:'🎵',label:'TÜMÜ'},{id:'pop_tr',emoji:'🎤',label:'POP'},{id:'rock_tr',emoji:'🎸',label:'ROCK'},{id:'rap_tr',emoji:'🎧',label:'RAP'},{id:'turku',emoji:'🪕',label:'TÜRKÜ'},{id:'80_tr',emoji:'🕺',label:'80LER'},{id:'90_tr',emoji:'📻',label:'90LAR'},{id:'2000_tr',emoji:'💿',label:'2000LER'}],en:[{id:'all_en',emoji:'🎵',label:'ALL'},{id:'pop_en',emoji:'🌟',label:'POP'},{id:'rock_en',emoji:'🤘',label:'ROCK'},{id:'rap_en',emoji:'🎤',label:'RAP'},{id:'80_en',emoji:'💃',label:'80S'},{id:'90_en',emoji:'📀',label:'90S'},{id:'2000_en',emoji:'💎',label:'2000S'},{id:'2010_en',emoji:'🔮',label:'2010S'}]};
+    firebase.initializeApp({ apiKey: "AIzaSyAQUBRabmCmdjufwEM2lNlXMQL0kOgdPpo", authDomain: "musicquiz-c6a6b.firebaseapp.com", databaseURL: "https://musicquiz-c6a6b-default-rtdb.europe-west1.firebasedatabase.app", projectId: "musicquiz-c6a6b", storageBucket: "musicquiz-c6a6b.firebasestorage.app", messagingSenderId: "417778631382", appId: "1:417778631382:web:f2a6dc453c78faeca93f77" });
+    const db = firebase.database();
+    let lang = 'tr', selectedCats = [], multiCats = [], score = 0, gold = 500, gameActive = !1, allTracks = [], usedTracks = new Set, currentTrack = null, timerInterval = null, timeLeft = 15, timerFrozen = !1, sfxOn = !0, darkOn = !1, isPlaying = !1, jokersOwned = { fifty: 3, freeze: 2, skip: 2, time: 2 }, isMultiplayer = !1, nickname = '', roomId = '', playerId = '', isReady = !1, players = {}, chatListener = null, playerListener = null, statusListener = null, roomListener = null, TARGET = 1000;
+    const audio = new Audio();
+    const TIMEOUT = 3600000;
+    const catsData = {
+        tr: [{ id: 'all_tr', emoji: '🎵', label: 'TÜMÜ' }, { id: 'pop_tr', emoji: '🎤', label: 'POP' }, { id: 'rock_tr', emoji: '🎸', label: 'ROCK' }, { id: 'rap_tr', emoji: '🎧', label: 'RAP' }, { id: 'turku', emoji: '🪕', label: 'TÜRKÜ' }, { id: '80_tr', emoji: '🕺', label: '80LER' }, { id: '90_tr', emoji: '📻', label: '90LAR' }, { id: '2000_tr', emoji: '💿', label: '2000LER' }, { id: 'arabesk', emoji: '🎻', label: 'ARABESK' }, { id: 'yabanci', emoji: '🌍', label: 'YABANCI' }],
+        en: [{ id: 'all_en', emoji: '🎵', label: 'ALL' }, { id: 'pop_en', emoji: '🌟', label: 'POP' }, { id: 'rock_en', emoji: '🤘', label: 'ROCK' }, { id: 'rap_en', emoji: '🎤', label: 'RAP' }, { id: '80_en', emoji: '💃', label: '80S' }, { id: '90_en', emoji: '📀', label: '90S' }, { id: '2000_en', emoji: '💎', label: '2000S' }, { id: '2010_en', emoji: '🔮', label: '2010S' }, { id: 'rnb', emoji: '🎶', label: 'R&B' }, { id: 'latin', emoji: '💃', label: 'LATIN' }]
+    };
 
-        async function fetchWithProxy(url){try{const r=await fetch(url);if(r.ok)return await r.json()}catch(e){}for(const p of CORS_PROXIES){try{const r=await fetch(p+encodeURIComponent(url));if(r.ok)return await r.json()}catch(e){}}return null}
-
-        function init(){
-            loadState();renderCategories();renderMarket();renderLeaderboard();updateAllUI();
-            setTimeout(()=>{const i=document.getElementById('intro');if(i)i.style.display='none'},3000);
-            audio.addEventListener('timeupdate',()=>{if(audio.duration&&isFinite(audio.duration))document.getElementById('progressBar').style.width=Math.min((audio.currentTime/audio.duration)*100,100)+'%'});
-            audio.addEventListener('ended',()=>{document.getElementById('disc').classList.remove('playing');document.getElementById('playBtn').textContent='▶';isPlaying=!1});
-            audio.addEventListener('playing',()=>{document.getElementById('disc').classList.add('playing');document.getElementById('playBtn').textContent='⏸';isPlaying=!0});
-            audio.addEventListener('pause',()=>{document.getElementById('disc').classList.remove('playing');document.getElementById('playBtn').textContent='▶';isPlaying=!1});
+    const demoDB = {
+        tr: {
+            turku: [
+                { a:'Neşet Ertaş', s:['Neredesin Sen','Zahidem','Gönül Dağı'] },{ a:'Aşık Veysel', s:['Uzun İnce Bir Yoldayım','Dostlar Beni Hatırlasın','Kara Toprak'] },{ a:'Muharrem Ertaş', s:['Kalktı Göç Eyledi','Arguvanlım'] },{ a:'Hacı Taşan', s:['Allı Turnam','Keklik Gibi'] },{ a:'Çekiç Ali', s:['Evlerinin Önü Mersin','Çorum Oyun Havası'] },
+                { a:'Nida Ateş', s:['Böyle Olur Mu','Gurbet Elde'] },{ a:'Belkıs Akkale', s:['Mardin Kapısı','Gül Yüzünde'] },{ a:'Sümer Ezgü', s:['Urfa Mermisi','Çarşı Pazar'] },{ a:'Arif Sağ', s:['Ben Melamet Hırkasını','Dost Cemalin'] },{ a:'Musa Eroğlu', s:['Yürü Bre Hızır Paşa','Mihriban'] },
+                { a:'Yavuz Top', s:['Çeke çeke','Güzel Seni'] },{ a:'İzzet Altınmeşe', s:['Bugün Bayram Günü','Derman Sendedir'] },{ a:'Kubat', s:['Fidayda','Ankara\'nın Bağları'] },{ a:'Cengiz Özkan', s:['Yandım Tokat','Başındaki Yazmaya'] },{ a:'Tolga Sağ', s:['Karanfil Eker misin','Şu Samsun\'un Evleri'] },
+                { a:'Sabahat Akkiraz', s:['Gönül Gel Varalım','Yüce Dağ Başında'] },{ a:'Gülay', s:['Dere Geliyor Dere','Kırmızı Buğday'] },{ a:'Erdal Erzincan', s:['Gönül Kuşu','Salına Salına'] },{ a:'Kıvırcık Ali', s:['Ahu Gözlüm','Gönlüm Dağlarda'] },{ a:'Mahzuni Şerif', s:['İşte Gidiyorum Çeşm-i Siyahım','Dom Dom Kurşunu'] },
+                { a:'Ruhi Su', s:['Söyleşi','Kara Yılan'] },{ a:'Zülfü Livaneli', s:['Yiğidim Aslanım','Güneş Topla Benim İçin'] },{ a:'Bedia Akartürk', s:['Çayın Öte Yüzünde','Düriyemin Güğümleri'] },{ a:'Canan Başkaya', s:['Kara Tren','Yüksek Yüksek Tepelere'] },{ a:'Mustafa Özarslan', s:['Kahpe Felek','Benim Yârim'] },
+                { a:'Sevda Gül', s:['Yol Havası','Bülbülüm Altın Kafeste'] },{ a:'Ali Ekber Çiçek', s:['Haydar Haydar','Gurbet Elde Bir Hal Geldi'] },{ a:'Fikret Otyam', s:['Mayın Tarlası','Dağlar Dağlar'] },{ a:'Özlem Özdil', s:['Ağlama Yar','Yandı Bağrım'] },{ a:'İsmail Altunsaray', s:['Turnalar','Gözün Aydın'] }
+            ],
+            pop_tr: [
+                { a:'Tarkan', s:['Şımarık','Kuzu Kuzu','Öp'] },{ a:'Sezen Aksu', s:['Gidiyorum','Vazgeçtim','Tükeneceğiz'] },{ a:'Ajda Pekkan', s:['Kimler Geldi Kimler Geçti','Sana Neler Edeceğim'] },{ a:'Hande Yener', s:['Romeo','Kelepçe','Bodrum'] },{ a:'Hadise', s:['Düm Tek Tek','Aşk Kaç Beden Giyer'] },
+                { a:'Murat Boz', s:['Aşkı Bulamam Ben','Özledim'] },{ a:'Sıla', s:['...Dan Sonra','Vaziyetler'] },{ a:'Gülşen', s:['Bangır Bangır','Yatcaz Kalkcaz'] },{ a:'Demet Akalın', s:['Afedersin','Tecrübe'] },{ a:'İzel', s:['Yelken','Çok mu Zor'] },
+                { a:'Mustafa Sandal', s:['Araba','İsyankar'] },{ a:'Kenan Doğulu', s:['Çakkıdı','Yüzsüz Yürek'] },{ a:'Yalın', s:['Değmez','Sensiz Olmaz'] },{ a:'Aynur Aydın', s:['Bi Dakika','Salla'] },{ a:'Bengü', s:['Kocaman Öpüyorum','Sahici'] },
+                { a:'Simge', s:['Miş Miş','Yankı'] },{ a:'Aleyna Tilki', s:['Cevapsız Çınlama','Sen Olsan Bari'] },{ a:'Edis', s:['Çok Çok','Dudak'] },{ a:'Buray', s:['Sen Sevda Mısın','Aşk mı Lazım'] },{ a:'Ferhat Göçer', s:['Yolun Açık Olsun','Gidemem'] },
+                { a:'Merve Özbey', s:['Vuracak','Yaş Hikayesi'] },{ a:'İrem Derici', s:['Kalbimin Tek Sahibine','Seni Çok Seviyorum'] },{ a:'Ebru Gündeş', s:['Sen Allahın Bir Lütfusun','Araftayım'] },{ a:'Sibel Can', s:['Kıskanırım','Dedikodu'] },{ a:'Serdar Ortaç', s:['Bilsem ki','Mesafe'] },
+                { a:'Rafet El Roman', s:['Sürgün','Direniyorum'] },{ a:'Candan Erçetin', s:['Yalan','Unutama Beni'] },{ a:'Funda Arar', s:['Seninle','Zor Gelir'] },{ a:'Emre Altuğ', s:['Sensiz Olmaz','Aşk Izdıraptır'] },{ a:'Özcan Deniz', s:['Dön Desem','Leyla'] }
+            ],
+            rock_tr: [
+                { a:'Duman', s:['Senden Daha Güzel','Köprüaltı','Her Şeyi Yak'] },{ a:'Mor ve Ötesi', s:['Bir Derdim Var','Cambaz','Yaz Yaz Yaz'] },{ a:'Şebnem Ferah', s:['Sil Baştan','Can Kırıkları','Yağmurlar'] },{ a:'Teoman', s:['Paramparça','İstanbul\'da Sonbahar'] },{ a:'Athena', s:['Holigan','Baklava'] },
+                { a:'MFÖ', s:['Sarı Laleler','Ali Desidero'] },{ a:'Manga', s:['Bir Kadın Çizeceksin','Dünyanın Sonuna Doğmuşum'] },{ a:'Pilli Bebek', s:['Böyle Gelmiş','Olmaz'] },{ a:'Redd', s:['Gecenin Fi tarihi','Aşk Virüs'] },{ a:'Yüksek Sadakat', s:['Ben Seni Arayamam','Kafile'] },
+                { a:'Kurban', s:['Sahip','Yalaka'] },{ a:'Pentagram', s:['Bir','Lions in a Cage'] },{ a:'Hayko Cepkin', s:['Yol Gözümü Dağladı','Hayvaaağ'] },{ a:'Aylin Aslım', s:['Ben Kalender','Senin Gibi'] },{ a:'Vega', s:['Bu Sabahların Bir Anlamı Olmalı','Destur'] },
+                { a:'Direc-t', s:['Aşkın Kanunu','Son Defa'] },{ a:'Dolu Kadehi Ters Tut', s:['Aldanmam','Duvar'] },{ a:'Adamlar', s:['Koca Yaşlı Şişko Dünya','Hikaye'] },{ a:'Palmiyeler', s:['Karbeyaz','Seninle'] },{ a:'Büyük Ev Ablukada', s:['Takıl Yani','Bi Hata'] },
+                { a:'Son Feci Bisiklet', s:['Bikinisinde Astronomi','Bu Kız'] },{ a:'Mabel Matiz', s:['Gel','Yaşım Çocuk'] },{ a:'Can Bonomo', s:['Meczup','Sevda Beni'] },{ a:'Emre Aydın', s:['Hoşçakal','Dayan Yalnızlığım'] },{ a:'Gripin', s:['Dört Duvar','Yanıma Gel'] },
+                { a:'Malt', s:['Deprem','Kendin Ol'] },{ a:'Cem Adrian', s:['Yalnızlık','Bana Ne Yaptın'] },{ a:'Hayal Köseoğlu', s:['Sana Değer','Kendimi Vurdum'] },{ a:'Multitap', s:['Gökyüzü','Yanıyoruz'] },{ a:'Sakin', s:['Ben Neyim','Uyandım'] }
+            ],
+            rap_tr: [
+                { a:'Ceza', s:['Holocaust','Yerli Plaka','Suspus'] },{ a:'Ezhel', s:['Geceler','Felaket','Kazıdık Tırnaklarla'] },{ a:'Sagopa K', s:['Vasiyet','Baytar','Bir Kulaç Daha'] },{ a:'Şehinşah', s:['Yak Yak','Karma','İmza'] },{ a:'Contra', s:['Islak Kum','Zebani'] },
+                { a:'Allâme', s:['Manifesto','Bir Zombinin Anatomisi'] },{ a:'Ben Fero', s:['Kimlerdensin','Demet Akalın'] },{ a:'Gazapizm', s:['Unutulacak Dünler','Heyecanı Yok'] },{ a:'Anıl Piyancı', s:['Bırakman Doğru mu','Kara Para'] },{ a:'Massaka', s:['Katliam','Savaş'] },
+                { a:'No.1', s:['Kronik','Yarım Kalan'] },{ a:'Norm Ender', s:['Mekanın Sahibi','Çıktık Yine Yollara'] },{ a:'Joker', s:['Geri Dön','Yol'] },{ a:'Khontkar', s:['Para','Hiçbir Şey'] },{ a:'Şam', s:['Dünya','Zombi'] },
+                { a:'Baneva', s:['Rüya','Yok'] },{ a:'Motive', s:['Makaveli','Yolumuz'] },{ a:'Ceg', s:['Hırsız','Böyle'] },{ a:'Hidra', s:['Kara Güneş','Yan'] },{ a:'Beta', s:['Kafamız Mat','Bir Gün'] },
+                { a:'Pit10', s:['Dünya Dönüyor','Yalan'] },{ a:'Killa Hakan', s:['Yerli Plaka','İsyan'] },{ a:'Sokrat St', s:['Kibir','Yüksel'] },{ a:'Mode XL', s:['Yok','Hisler'] },{ a:'Ayben', s:['Sıkı Tut','Kızlar'] },
+                { a:'Kolera', s:['İkimiz','Bir An'] },{ a:'Fuat', s:['Göğe Bakalım','Ses'] },{ a:'Defkhan', s:['Rastgele','Yanımda Kal'] },{ a:'Sansar Salvo', s:['Sabah','Uzak'] },{ a:'Hayki', s:['Yok Ötesi','Savaşın Ortasında'] }
+            ],
+            arabesk: [
+                { a:'Müslüm Gürses', s:['Hangimiz Sevmedik','Tutamıyorum Zamanı','Affet'] },{ a:'Orhan Gencebay', s:['Dokunma','Batsın Bu Dünya'] },{ a:'Ferdi Tayfur', s:['Emmioğlu','Çeşme'] },{ a:'İbrahim Tatlıses', s:['Kara Üzüm Habbesi','Allah Allah'] },{ a:'Hakkı Bulut', s:['Ben Buyum','Falcı'] },
+                { a:'Mine Koşan', s:['Bir Gönül Arıyorum','Hasta Düştüm'] },{ a:'Bergen', s:['Acıların Kadını','Giden Gençliğime'] },{ a:'Ceylan', s:['Dumanlı Dumanlı','Yokluğunun Kefeni'] },{ a:'Kibariye', s:['Gideceğim','Küçüğüm'] },{ a:'Gökhan Güney', s:['Tanrım Beni Baştan Yarat','Neredesin'] },
+                { a:'Cengiz Kurtoğlu', s:['Yorgun Yıllarım','Hayatımı Yaşıyorum'] },{ a:'Sinan Özen', s:['Vurula Vurula','Ona Sor'] },{ a:'Devran Çağlar', s:['Aşkın Mapushane','Bitirdin Beni'] },{ a:'Mahmut Tuncer', s:['Fırat Kenarında','Yandı Gönlümüz'] },{ a:'Sibel Pamuk', s:['Yanımda Kal','Acılar'] },
+                { a:'Ankaralı Namık', s:['Anadolu Çiçeği','Hadi Gari'] },{ a:'Hülya Avşar', s:['Sevdim','Yürü Ya Kulum'] },{ a:'Emrah', s:['Belalım','Sevdim mi Tam Severim'] },{ a:'Küçük İbo', s:['Gülüm Benim','Çoban Yıldızı'] },{ a:'Cavit Karabey', s:['Ağlama Yar','Yalvarırım'] },
+                { a:'Selami Şahin', s:['Ben Bir Göçmen Kızı Gördüm','Aşkımız Bitti'] },{ a:'Ümit Besen', s:['Seni Unutmaya Gücüm Yetmez','At Kadehi Elinden'] },{ a:'Nejat Alp', s:['İkimiz Bir Fidanız','Acı Gerçekler'] },{ a:'Atilla Kaya', s:['Taverna','Kadehinde Zehir Olsa'] },{ a:'Harika Avcı', s:['Sokaklar','Yalancı'] },
+                { a:'Gülden Karaböcek', s:['Kırılsın Ellerim','Dilek Taşı'] },{ a:'Samime Sanay', s:['Neredesin','Kara Sevda'] },{ a:'Neşe Karaböcek', s:['Yalancı Bahar','İçmeden Sarhoşum'] },{ a:'Seda Sayan', s:['Geceler','Aşkıma İnan'] },{ a:'Mithat Körler', s:['Gitme','Yaralı'] }
+            ],
+            '80_tr': [
+                { a:'Ajda Pekkan', s:['Kimler Geldi Kimler Geçti','Sana Neler Edeceğim'] },{ a:'Sezen Aksu', s:['Sen Ağlama','Firuze'] },{ a:'Nükhet Duru', s:['Ben Sana Vurgunum','Mahmure'] },{ a:'Nilüfer', s:['Mavilim','Mor Menekşe'] },{ a:'Kayahan', s:['Geceler','Yemin Ettim'] },
+                { a:'Zerrin Özer', s:['Gönül','Alim'] },{ a:'Nazan Öncel', s:['Bir Hadise Var','Dillere Düşeceğiz'] },{ a:'Barış Manço', s:['Dönence','Sarı Çizmeli Mehmet Ağa'] },{ a:'Cem Karaca', s:['Resimdeki Gözyaşları','Tamirci Çırağı'] },{ a:'Erkin Koray', s:['Fesuphanallah','Şaşkın'] },
+                { a:'Edip Akbayram', s:['Aldırma Gönül','Hasretinle Yandı Gönlüm'] },{ a:'Fikret Kızılok', s:['Gönül','Bu Kalp Seni Unutur mu'] },{ a:'Zülfü Livaneli', s:['Yiğidim Aslanım','Atlının Türküsü'] },{ a:'Ahmet Kaya', s:['Ağladıkça','Şafak Türküsü'] },{ a:'İlhan İrem', s:['Anlasana','Yazık Oldu Yarınlara'] },
+                { a:'Yeni Türkü', s:['Telli Turna','Mamak Türküsü'] },{ a:'Moğollar', s:['Dağ Ve Çocuk','Alageyik Destanı'] },{ a:'Kurtalan Ekspres', s:['Gülpembe','Estarabim'] },{ a:'Alpay', s:['Eylül\'de Gel','Bir Cennettir Bu Dünya'] },{ a:'Tanju Okan', s:['Kadınım','Hasret'] },
+                { a:'Ayşegül Aldinç', s:['Bir Bahar Akşamı','Sorma'] },{ a:'Sertab Erener', s:['Sakin Ol','Vur Yüreğim'] },{ a:'Asya', s:['Vurulmuşum Sana','Masum Değiliz'] },{ a:'Bendeniz', s:['Kırmızı Biber','Zor Sevda'] },{ a:'Ferda Anıl Yarkın', s:['Aşkın Kanunu','Bir Daha'] },
+                { a:'Jale', s:['Yeniden Başlasın','Üzgünüm'] },{ a:'Seyyal Taner', s:['Neler Oluyor','Allahım Neydi Günahım'] },{ a:'Yonca Evcimik', s:['Abone','Sallayalım Dünyayı'] },{ a:'Harun Kolçak', s:['Gir Kanıma','Elimde Değil'] },{ a:'Mazhar Alanson', s:['Bodrum','Ağla'] }
+            ],
+            '90_tr': [
+                { a:'Tarkan', s:['Kıl Oldum','Salına Salına Sinsice'] },{ a:'Mustafa Sandal', s:['Araba','Detay'] },{ a:'Sertab Erener', s:['Lâl','Acıtamazsın'] },{ a:'Levent Yüksel', s:['Zalim','Medcezir'] },{ a:'Yonca Evcimik', s:['Çok Canın Yandı','Her Yer Karanlık'] },
+                { a:'Gülben Ergen', s:['Sana Sana','Yaramaz'] },{ a:'Hakan Peker', s:['Karamela','Bir Efsane'] },{ a:'Deniz Arcak', s:['Bana Yalan Söylediler','Yeter'] },{ a:'Serdar Ortaç', s:['Karabiberim','Loco'] },{ a:'Mahsun Kırmızıgül', s:['Yıkılmadım','Belalım'] },
+                { a:'İbrahim Erkal', s:['Unutmak İstiyorum','Canısı'] },{ a:'Emrah', s:['Dura Dura','Hoş Geldin'] },{ a:'Soner Arıca', s:['Sürgün','Kara Sevda'] },{ a:'Aşkın Nur Yengi', s:['Hesap Ver','Kop Gitme'] },{ a:'Ufuk Yıldırım', s:['Acayipsin','Aşkım Aşkım'] },
+                { a:'Rober Hatemo', s:['Senden Çok Var','Doludizgin'] },{ a:'Metin Arolat', s:['Bir And Daha','Yan Yüreğim'] },{ a:'Atilla Taş', s:['Kırmızı Gül','Kumral'] },{ a:'Ercan Saatçi', s:['Saygısız','Olmaz mı'] },{ a:'İzel', s:['Hasretim','Bekle Yağmur Geliyor'] },
+                { a:'Reyhan Karaca', s:['Yaman Sevda','Sevda Yüklü Kervan'] },{ a:'Fedon', s:['Dokunma','Yüz Yüze'] },{ a:'Çelik', s:['Hercai','Ateşteyim'] },{ a:'Bora Duran', s:['Bir Şans Daha','Acıyı Bırak'] },{ a:'Kibariye', s:['Aldatma','Yalancı'] },
+                { a:'Demet Sağıroğlu', s:['Arnavut Kaldırımı','Kınalı Bebek'] },{ a:'Niran Ünsal', s:['Haktan','Ayıpsın'] },{ a:'Murat Başaran', s:['Aşk Kapısı','Yanayım'] },{ a:'Yıldız Tilbe', s:['Delikanlım','Çabuk Olalım Aşkım'] },{ a:'Pınar Aylin', s:['Hop Hop','Ayrılmalıyız'] }
+            ],
+            '2000_tr': [
+                { a:'Hande Yener', s:['Yalanın Batsın','Acele Etme'] },{ a:'Gülşen', s:['Of Of','Sakıncalı'] },{ a:'Murat Boz', s:['Maximum','Para Yok'] },{ a:'Sıla', s:['Sevişmeden Uyumayalım','Açık Deniz'] },{ a:'Mustafa Ceceli', s:['Unutamam','Eksik'] },
+                { a:'Emre Aydın', s:['Afili Yalnızlık','Hoşçakal'] },{ a:'Manga', s:['Fly To Stay Alive','We Could Be The Same'] },{ a:'Mor ve Ötesi', s:['Deli','Sevda Çiçeği'] },{ a:'Şebnem Ferah', s:['Çakıl Taşları','Ben Şarkımı Söylerken'] },{ a:'Mabel Matiz', s:['Öyle Kolaysa','Sultan Süleyman'] },
+                { a:'Soner Sarıkabadayı', s:['İtirazım Var','Tarifi Zor'] },{ a:'Tan Taşçı', s:['Nasıl Seveceğim','Gitme'] },{ a:'İrem Derici', s:['Kalbimin Tek Sahibine','Bir Miyiz'] },{ a:'Aleyna Tilki', s:['Yalnız Çiçek','Nasılsın Aşkta'] },{ a:'Edis', s:['Benim Ol','Perişanım'] },
+                { a:'Buray', s:['Aşk mı Lazım','Seni Sevmiyorum Artık'] },{ a:'Yalın', s:['Ah Be Kardeşim','Sevmez Olaydım'] },{ a:'Kenan Doğulu', s:['Tutamıyorum Zamanı','Aşk Oyunu'] },{ a:'Hadise', s:['Prenses','Şampiyon'] },{ a:'Demet Akalın', s:['Çanta','Dans Et'] },
+                { a:'Bengü', s:['Sığamıyorum','İkinci Hal'] },{ a:'Simge', s:['Üzülmedin mi','Prens & Prenses'] },{ a:'Ayşe Hatun Önal', s:['Çeksene Elini','Hey DJ'] },{ a:'Nil Karaibrahimgil', s:['Burası İstanbul','Sarhoş'] },{ a:'Cem Adrian', s:['Sen Gel Diyorsun','Yalnızlık Senfonisi'] },
+                { a:'Can Bonomo', s:['Sevda Beni','Ali Baba'] },{ a:'Halil Sezai', s:['İsyan','Yanıma Gel'] },{ a:'Rafet El Roman', s:['Aşk-ı Virane','Gelin Gelin'] },{ a:'Ferhat Göçer', s:['Dön Diyemedim','Biri Bana Gelsin'] },{ a:'Özgün', s:['Elveda','Şeytan'] }
+            ],
+            yabanci: [
+                { a:'Taylor Swift', s:['Shake It Off','Blank Space'] },{ a:'Ed Sheeran', s:['Shape of You','Perfect'] },{ a:'Adele', s:['Hello','Rolling In The Deep'] },{ a:'Beyonce', s:['Crazy In Love','Single Ladies'] },{ a:'Rihanna', s:['Umbrella','Diamonds'] },
+                { a:'Lady Gaga', s:['Poker Face','Bad Romance'] },{ a:'Katy Perry', s:['Firework','Roar'] },{ a:'Britney Spears', s:['Toxic','...Baby One More Time'] },{ a:'Madonna', s:['Like a Virgin','Material Girl'] },{ a:'Michael Jackson', s:['Thriller','Billie Jean'] },
+                { a:'Queen', s:['Bohemian Rhapsody','We Will Rock You'] },{ a:'ABBA', s:['Dancing Queen','Mamma Mia'] },{ a:'Coldplay', s:['Viva La Vida','Yellow'] },{ a:'The Beatles', s:['Hey Jude','Let It Be'] },{ a:'Elton John', s:['Rocket Man','Your Song'] },
+                { a:'Pink', s:['Just Give Me a Reason','So What'] },{ a:'Bruno Mars', s:['Uptown Funk','Just The Way You Are'] },{ a:'Justin Bieber', s:['Sorry','Love Yourself'] },{ a:'Ariana Grande', s:['Thank U, Next','7 Rings'] },{ a:'Billie Eilish', s:['Bad Guy','Lovely'] },
+                { a:'Dua Lipa', s:['Levitating','New Rules'] },{ a:'Harry Styles', s:['Watermelon Sugar','As It Was'] },{ a:'Shawn Mendes', s:['Senorita','Stitches'] },{ a:'Camila Cabello', s:['Havana','Never Be the Same'] },{ a:'Sam Smith', s:['Stay With Me','Unholy'] },
+                { a:'Maroon 5', s:['Sugar','Moves Like Jagger'] },{ a:'Imagine Dragons', s:['Believer','Radioactive'] },{ a:'One Direction', s:['What Makes You Beautiful','Story of My Life'] },{ a:'Justin Timberlake', s:['Can\'t Stop the Feeling','Mirrors'] },{ a:'Whitney Houston', s:['I Will Always Love You','I Wanna Dance with Somebody'] }
+            ]
+        },
+          en: {
+            pop_en: [
+                { a:'Taylor Swift', s:['Shake It Off','Blank Space','Cruel Summer'] },{ a:'Ed Sheeran', s:['Shape of You','Perfect','Bad Habits'] },{ a:'Adele', s:['Hello','Easy On Me','Someone Like You'] },{ a:'Beyonce', s:['Crazy In Love','Single Ladies','Halo'] },
+                { a:'Rihanna', s:['Umbrella','Diamonds','We Found Love'] },{ a:'Lady Gaga', s:['Poker Face','Bad Romance','Shallow'] },{ a:'Katy Perry', s:['Firework','Roar','Dark Horse'] },{ a:'Bruno Mars', s:['Uptown Funk','Just The Way You Are','Grenade'] },
+                { a:'Justin Bieber', s:['Sorry','Love Yourself','Peaches'] },{ a:'Ariana Grande', s:['Thank U, Next','7 Rings','Positions'] },{ a:'Billie Eilish', s:['Bad Guy','Happier Than Ever','Ocean Eyes'] },{ a:'Dua Lipa', s:['Levitating','New Rules','Don\'t Start Now'] },
+                { a:'Harry Styles', s:['Watermelon Sugar','As It Was','Adore You'] },{ a:'Shawn Mendes', s:['Senorita','Stitches','Treat You Better'] },{ a:'Camila Cabello', s:['Havana','Never Be the Same','Bam Bam'] },{ a:'Sam Smith', s:['Stay With Me','Unholy','Dancing With a Stranger'] },
+                { a:'Maroon 5', s:['Sugar','Moves Like Jagger','Girls Like You'] },{ a:'Olivia Rodrigo', s:['drivers license','good 4 u','vampire'] },{ a:'Doja Cat', s:['Say So','Kiss Me More','Woman'] },{ a:'The Weeknd', s:['Blinding Lights','Save Your Tears','Die For You'] },
+                { a:'Sia', s:['Chandelier','Cheap Thrills','Unstoppable'] },{ a:'Charlie Puth', s:['Attention','See You Again','Left and Right'] },{ a:'Lizzo', s:['Truth Hurts','Good as Hell','About Damn Time'] },{ a:'Selena Gomez', s:['Lose You To Love Me','Calm Down','Same Old Love'] },
+                { a:'P!nk', s:['Just Give Me a Reason','So What','Cover Me In Sunshine'] },{ a:'Elton John', s:['Cold Heart','Sacrifice'] },{ a:'Post Malone', s:['Circles','Sunflower','Rockstar'] },{ a:'Miley Cyrus', s:['Flowers','Wrecking Ball','Malibu'] },
+                { a:'Coldplay', s:['A Sky Full of Stars','My Universe','Adventure of a Lifetime'] },{ a:'OneRepublic', s:['Counting Stars','I Ain\'t Worried','Apologize'] }
+            ],
+            rock_en: [
+                { a:'Queen', s:['Bohemian Rhapsody','We Will Rock You','Another One Bites the Dust'] },{ a:'Imagine Dragons', s:['Believer','Radioactive','Thunder'] },{ a:'Linkin Park', s:['Numb','In the End','What I\'ve Done'] },{ a:'Nirvana', s:['Smells Like Teen Spirit','Come As You Are','Heart-Shaped Box'] },
+                { a:'Red Hot Chili Peppers', s:['Californication','Under the Bridge','Snow'] },{ a:'Green Day', s:['Boulevard of Broken Dreams','American Idiot','21 Guns'] },{ a:'Coldplay', s:['Yellow','The Scientist','Fix You'] },{ a:'Metallica', s:['Nothing Else Matters','Enter Sandman','The Unforgiven'] },
+                { a:'AC/DC', s:['Highway to Hell','Back in Black','Thunderstruck'] },{ a:'Guns N\' Roses', s:['Sweet Child O\' Mine','November Rain','Welcome to the Jungle'] },{ a:'The Beatles', s:['Hey Jude','Let It Be','Come Together'] },{ a:'Bon Jovi', s:['Livin\' On A Prayer','It\'s My Life','You Give Love a Bad Name'] },
+                { a:'U2', s:['With Or Without You','Beautiful Day','Sunday Bloody Sunday'] },{ a:'The Rolling Stones', s:['Paint It Black','Angie','Start Me Up'] },{ a:'Evanescence', s:['Bring Me To Life','My Immortal','Going Under'] },{ a:'Foo Fighters', s:['The Pretender','Everlong','Learn to Fly'] },
+                { a:'Pearl Jam', s:['Alive','Jeremy','Even Flow'] },{ a:'Radiohead', s:['Creep','Karma Police','No Surprises'] },{ a:'Muse', s:['Uprising','Starlight','Supermassive Black Hole'] },{ a:'Oasis', s:['Wonderwall','Don\'t Look Back in Anger','Champagne Supernova'] },
+                { a:'The Killers', s:['Mr. Brightside','Human','Somebody Told Me'] },{ a:'Kings of Leon', s:['Sex on Fire','Use Somebody','Waste a Moment'] },{ a:'Arctic Monkeys', s:['Do I Wanna Know?','R U Mine?','505'] },{ a:'Twenty One Pilots', s:['Stressed Out','Heathens','Ride'] },
+                { a:'Fall Out Boy', s:['Sugar, We\'re Goin Down','Centuries','Thnks fr th Mmrs'] },{ a:'Panic! At The Disco', s:['High Hopes','I Write Sins Not Tragedies','House of Memories'] },{ a:'The White Stripes', s:['Seven Nation Army','Fell in Love With a Girl'] },
+                { a:'Audioslave', s:['Like a Stone','Cochise'] },{ a:'Three Days Grace', s:['Animal I Have Become','I Hate Everything About You'] },{ a:'Shinedown', s:['Second Chance','Sound of Madness'] }
+            ],
+            rap_en: [
+                { a:'Eminem', s:['Lose Yourself','Stan','The Real Slim Shady'] },{ a:'Drake', s:['God\'s Plan','In My Feelings','Hotline Bling'] },{ a:'Kanye West', s:['Stronger','Gold Digger','Heartless'] },{ a:'Jay-Z', s:['Empire State of Mind','99 Problems','Run This Town'] },
+                { a:'Kendrick Lamar', s:['HUMBLE.','DNA.','Alright'] },{ a:'Travis Scott', s:['SICKO MODE','goosebumps','HIGHEST IN THE ROOM'] },{ a:'Post Malone', s:['Circles','Rockstar','Better Now'] },{ a:'Lil Wayne', s:['Lollipop','A Milli','6 Foot 7 Foot'] },
+                { a:'Nicki Minaj', s:['Starships','Super Bass','Anaconda'] },{ a:'Cardi B', s:['Bodak Yellow','I Like It','WAP'] },{ a:'Megan Thee Stallion', s:['Savage','Body','WAP'] },{ a:'Snoop Dogg', s:['Drop It Like It\'s Hot','Still D.R.E.','Young, Wild & Free'] },
+                { a:'Dr. Dre', s:['Still D.R.E.','The Next Episode','Nuthin\' But a \'G\' Thang'] },{ a:'50 Cent', s:['In Da Club','Candy Shop','P.I.M.P.'] },{ a:'J. Cole', s:['No Role Modelz','Middle Child','Wet Dreamz'] },{ a:'Tupac', s:['California Love','Dear Mama','Changes'] },
+                { a:'The Notorious B.I.G.', s:['Juicy','Big Poppa','Hypnotize'] },{ a:'Lil Nas X', s:['Old Town Road','Industry Baby','Montero'] },{ a:'DaBaby', s:['ROCKSTAR','BOP','Suge'] },{ a:'Tyga', s:['Taste','Rack City','Ayy Macarena'] },
+                { a:'Wiz Khalifa', s:['See You Again','Black and Yellow','We Dem Boyz'] },{ a:'Chance the Rapper', s:['No Problem','I\'m the One','Holy'] },{ a:'Lil Baby', s:['The Bigger Picture','Sum 2 Prove','Yes Indeed'] },{ a:'G-Eazy', s:['No Limit','Me, Myself & I'] },
+                { a:'Logic', s:['1-800-273-8255','Everyday','Homicide'] },{ a:'A$AP Rocky', s:['Praise The Lord','Fashion Killa','Lord Pretty Flacko'] },{ a:'Mac Miller', s:['Self Care','Good News','Blue World'] },{ a:'Ty Dolla $ign', s:['Or Nah','Paranoid','Spicy'] },
+                { a:'Macklemore', s:['Thrift Shop','Can\'t hold Us','Glorious'] },{ a:'NF', s:['Let You Down','The Search','Time'] }
+            ],
+            '80_en': [
+                { a:'Michael Jackson', s:['Thriller','Billie Jean','Beat It'] },{ a:'Madonna', s:['Like a Virgin','Material Girl','La Isla Bonita'] },{ a:'Prince', s:['Purple Rain','Kiss','When Doves Cry'] },{ a:'Whitney Houston', s:['I Wanna Dance with Somebody','Greatest Love of All'] },
+                { a:'Queen', s:['Radio Ga Ga','I Want to Break Free','Under Pressure'] },{ a:'Bon Jovi', s:['Livin\' On A Prayer','You Give Love a Bad Name'] },{ a:'Guns N\' Roses', s:['Sweet Child O\' Mine','Welcome to the Jungle'] },{ a:'AC/DC', s:['Back in Black','You Shook Me All Night Long'] },
+                { a:'Cyndi Lauper', s:['Girls Just Want to Have Fun','Time After Time'] },{ a:'Bruce Springsteen', s:['Born in the U.S.A.','Dancing In the Dark'] },{ a:'Journey', s:['Don\'t Stop Believin\'','Separate Ways'] },{ a:'Toto', s:['Africa','Hold the Line'] },
+                { a:'Phil Collins', s:['In the Air Tonight','Another Day in Paradise'] },{ a:'The Police', s:['Every Breath You Take','Message in a Bottle'] },{ a:'U2', s:['With Or Without You','Where the Streets Have No Name'] },{ a:'Tina Turner', s:['What\'s Love Got to Do with It','The Best'] },
+                { a:'Survivor', s:['Eye of the Tiger','Burning Heart'] },{ a:'Europe', s:['The Final Countdown','Carrie'] },{ a:'Dire Straits', s:['Sultans of Swing','Money for Nothing'] },{ a:'Depeche Mode', s:['Enjoy the Silence','Personal Jesus'] },
+                { a:'ZZ Top', s:['Gimme All Your Lovin\'','Sharp Dressed Man'] },{ a:'Duran Duran', s:['Hungry Like the Wolf','Ordinary World'] },{ a:'A-ha', s:['Take On Me','The Sun Always Shines on TV'] },{ a:'Genesis', s:['Invisible Touch','Land of Confusion'] },
+                { a:'Van Halen', s:['Jump','Panama'] },{ a:'Bryan Adams', s:['Summer of \'69','Heaven'] },{ a:'Rick Astley', s:['Never Gonna Give You Up','Together Forever'] },{ a:'Tears for Fears', s:['Everybody Wants to Rule the World','Shout'] },
+                { a:'The Clash', s:['Should I Stay or Should I Go','Rock the Casbah'] },{ a:'INXS', s:['Need You Tonight','Never Tear Us Apart'] }
+            ],
+            '90_en': [
+                { a:'Nirvana', s:['Smells Like Teen Spirit','Come As You Are'] },{ a:'Spice Girls', s:['Wannabe','Say You\'ll Be There'] },{ a:'Backstreet Boys', s:['Everybody','I Want It That Way'] },{ a:'Britney Spears', s:['...Baby One More Time','Sometimes'] },
+                { a:'Madonna', s:['Vogue','Frozen'] },{ a:'Mariah Carey', s:['Hero','We Belong Together'] },{ a:'Celine Dion', s:['My Heart Will Go On','Because You Loved Me'] },{ a:'Whitney Houston', s:['I Will Always Love You','It\'s Not Right'] },
+                { a:'TLC', s:['No Scrubs','Waterfalls'] },{ a:'Destiny\'s Child', s:['Say My Name','Bills, Bills, Bills'] },{ a:'Oasis', s:['Wonderwall','Champagne Supernova'] },{ a:'Radiohead', s:['Creep','Karma Police'] },
+                { a:'Red Hot Chili Peppers', s:['Under the Bridge','Californication'] },{ a:'Alanis Morissette', s:['Ironic','You Oughta Know'] },{ a:'Green Day', s:['Basket Case','When I Come Around'] },{ a:'Metallica', s:['Nothing Else Matters','Enter Sandman'] },
+                { a:'Pearl Jam', s:['Jeremy','Even Flow'] },{ a:'Rage Against the Machine', s:['Killing in the Name','Bulls on Parade'] },{ a:'Blink-182', s:['What\'s My Age Again?','All The Small Things'] },{ a:'Eminem', s:['My Name Is','The Real Slim Shady'] },
+                { a:'Dr. Dre', s:['Still D.R.E.','Nuthin\' But a \'G\' Thang'] },{ a:'2Pac', s:['California Love','Changes'] },{ a:'Notorious B.I.G.', s:['Juicy','Mo Money Mo Problems'] },{ a:'Snoop Dogg', s:['Gin and Juice','Who Am I'] },
+                { a:'The Cranberries', s:['Zombie','Linger'] },{ a:'No Doubt', s:['Don\'t Speak','Just a Girl'] },{ a:'The Smashing Pumpkins', s:['1979','Tonight, Tonight'] },{ a:'Coolio', s:['Gangsta\'s Paradise','Fantastic Voyage'] },
+                { a:'Will Smith', s:['Men in Black','Gettin\' Jiggy wit It'] },{ a:'Ricky Martin', s:['Livin\' la Vida Loca','She Bangs'] }
+            ],
+                '2000_en': [
+                { a:'Eminem', s:['Lose Yourself','Without Me'] },{ a:'Beyonce', s:['Crazy In Love','Halo'] },{ a:'Britney Spears', s:['Toxic','Oops!...I Did It Again'] },{ a:'OutKast', s:['Hey Ya!','Ms. Jackson'] },
+                { a:'Usher', s:['Yeah!','Burn'] },{ a:'Alicia Keys', s:['Fallin\'','No One'] },{ a:'Coldplay', s:['Clocks','The Scientist'] },{ a:'Green Day', s:['Boulevard of Broken Dreams','American Idiot'] },
+                { a:'Linkin Park', s:['Numb','In the End'] },{ a:'Maroon 5', s:['This Love','She Will Be Loved'] },{ a:'Kanye West', s:['Gold Digger','Stronger'] },{ a:'Rihanna', s:['Umbrella','Don\'t Stop the Music'] },
+                { a:'Lady Gaga', s:['Just Dance','Poker Face'] },{ a:'Taylor Swift', s:['Love Story','You Belong With Me'] },{ a:'Adele', s:['Chasing Pavements','Rolling In The Deep'] },{ a:'The Killers', s:['Mr. Brightside','Somebody Told Me'] },
+                { a:'Katy Perry', s:['I Kissed a Girl','Hot n Cold'] },{ a:'Justin Timberlake', s:['SexyBack','Cry Me a River'] },{ a:'Shakira', s:['Hips Don\'t Lie','Whenever, Wherever'] },{ a:'Black Eyed Peas', s:['I Gotta Feeling','Boom Boom Pow'] },
+                { a:'P!nk', s:['So What','Raise Your Glass'] },{ a:'Nelly', s:['Hot in Herre','Dilemma'] },{ a:'50 Cent', s:['In Da Club','Candy Shop'] },{ a:'Gwen Stefani', s:['Hollaback Girl','The Sweet Escape'] },
+                { a:'Gorillaz', s:['Feel Good Inc.','Clint Eastwood'] },{ a:'The White Stripes', s:['Seven Nation Army','Fell in Love With a Girl'] },{ a:'Evanescence', s:['Bring Me To Life','My Immortal'] },{ a:'Nickelback', s:['How You Remind Me','Photograph'] },
+                { a:'Avril Lavigne', s:['Complicated','Sk8er Boi'] },{ a:'Kelly Clarkson', s:['Since U Been Gone','Because of You'] }
+            ],
+            '2010_en': [
+                { a:'Taylor Swift', s:['Shake It Off','Blank Space'] },{ a:'Ed Sheeran', s:['Shape of You','Thinking Out Loud'] },{ a:'Adele', s:['Hello','Rolling In The Deep'] },{ a:'Bruno Mars', s:['Uptown Funk','Just The Way You Are'] },
+                { a:'Billie Eilish', s:['Bad Guy','Lovely'] },{ a:'Dua Lipa', s:['New Rules','Levitating'] },{ a:'Drake', s:['Hotline Bling','One Dance'] },{ a:'Rihanna', s:['Diamonds','We Found Love'] },
+                { a:'Katy Perry', s:['Roar','Dark Horse'] },{ a:'Lady Gaga', s:['Shallow','Bad Romance'] },{ a:'The Weeknd', s:['Blinding Lights','Can\'t Feel My Face'] },{ a:'Post Malone', s:['Circles','Sunflower'] },
+                { a:'Ariana Grande', s:['Thank U, Next','7 Rings'] },{ a:'Justin Bieber', s:['Sorry','Love Yourself'] },{ a:'Shawn Mendes', s:['Stitches','Señorita'] },{ a:'Camila Cabello', s:['Havana','Señorita'] },
+                { a:'Maroon 5', s:['Sugar','Girls Like You'] },{ a:'Imagine Dragons', s:['Believer','Radioactive'] },{ a:'One Direction', s:['Story of My Life','Drag Me Down'] },{ a:'Sam Smith', s:['Stay With Me','Unholy'] },
+                { a:'Sia', s:['Chandelier','Cheap Thrills'] },{ a:'Lizzo', s:['Truth Hurts','Good as Hell'] },{ a:'Cardi B', s:['Bodak Yellow','I Like It'] },{ a:'Megan Thee Stallion', s:['Savage','WAP'] },
+                { a:'Doja Cat', s:['Say So','Kiss Me More'] },{ a:'Olivia Rodrigo', s:['drivers license','good 4 u'] },{ a:'Lil Nas X', s:['Old Town Road','Industry Baby'] },{ a:'Halsey', s:['Without Me','Graveyard'] },
+                { a:'Panic! At The Disco', s:['High Hopes','House of Memories'] },{ a:'Twenty One Pilots', s:['Stressed Out','Ride'] }
+            ],
+            rnb: [
+                { a:'Beyonce', s:['Crazy In Love','Halo','Single Ladies'] },{ a:'Rihanna', s:['Diamonds','We Found Love','Love On The Brain'] },{ a:'The Weeknd', s:['Blinding Lights','Can\'t Feel My Face','Die For You'] },{ a:'Drake', s:['One Dance','Hotline Bling','Hold On, We\'re Going Home'] },
+                { a:'Alicia Keys', s:['Fallin\'','No One','If I Ain\'t Got You'] },{ a:'Usher', s:['Yeah!','Burn','Climax'] },{ a:'Chris Brown', s:['With You','Forever','No Guidance'] },{ a:'Frank Ocean', s:['Thinkin Bout You','Pink + White','Lost'] },
+                { a:'SZA', s:['Kill Bill','Good Days','The Weekend'] },{ a:'H.E.R.', s:['Damage','Best Part','Could\'ve Been'] },{ a:'Daniel Caesar', s:['Best Part','Get You','Japanese Denim'] },{ a:'Kehlani', s:['Gangsta','Nights Like This','Distraction'] },
+                { a:'Bruno Mars', s:['That\'s What I Like','Treasure','24K Magic'] },{ a:'Janelle Monáe', s:['Make Me Feel','Tightrope','Pynk'] },{ a:'Miguel', s:['Adorn','Sure Thing','Sky Walker'] },{ a:'Ella Mai', s:['Boo\'d Up','Trip','Not Another Love Song'] },
+                { a:'6LACK', s:['PRBLMS','Pretty Little Fears','Switch'] },{ a:'Bryson Tiller', s:['Don\'t','Exchange','Right My Wrongs'] },{ a:'Summer Walker', s:['Girls Need Love','Playing Games','No Love'] },{ a:'Jhené Aiko', s:['Sativa','While We\'re Young','Triggered'] },
+                { a:'Snoh Aalegra', s:['I Want You Around','Whoa','Find Someone Like You'] },{ a:'Tinashe', s:['2 On','All Hands on Deck','Die a Little Bit'] },{ a:'Ne-Yo', s:['So Sick','Miss Independent','Closer'] },{ a:'Mario', s:['Let Me Love You','How Do I Breathe'] },
+                { a:'John Legend', s:['All of Me','Ordinary People','Green Light'] },{ a:'Trey Songz', s:['Heart Attack','Slow Motion'] },{ a:'Ty Dolla $ign', s:['Or Nah','Paranoid','Saved'] },{ a:'PartyNextDoor', s:['Not Nice','Come and See Me'] },
+                { a:'Majid Jordan', s:['Hold On, We\'re Going Home','Waves of Blue'] },{ a:'Jazmine Sullivan', s:['Pick Up Your Feelings','Girl Like Me'] }
+            ],
+            latin: [
+                { a:'Shakira', s:['Hips Don\'t Lie','Waka Waka','Whenever, Wherever'] },{ a:'Enrique Iglesias', s:['Bailando','Hero','Duele el Corazon'] },{ a:'J Balvin', s:['Mi Gente','Ay Vamos','Ginza'] },{ a:'Bad Bunny', s:['Moscow Mule','Titi Me Pregunto','Dakiti'] },
+                { a:'Daddy Yankee', s:['Gasolina','Con Calma','Dura'] },{ a:'Luis Fonsi', s:['Despacito','No Me Doy por Vencido','Échame la Culpa'] },{ a:'Maluma', s:['Hawái','Felices los 4','Corazón'] },{ a:'Ozuna', s:['Taki Taki','Se Preparó','Dile Que Tu Me Quieres'] },
+                { a:'Nicky Jam', s:['X','El Perdón','Travesuras'] },{ a:'Karol G', s:['Tusa','Bichota','Provenza'] },{ a:'Anitta', s:['Envolver','Downtown','Girl From Rio'] },{ a:'Romeo Santos', s:['Propuesta Indecente','Eres Mía','Odio'] },
+                { a:'Ricky Martin', s:['Livin\' la Vida Loca','María','La Mordidita'] },{ a:'Marc Anthony', s:['Vivir Mi Vida','Flor Pálida','Ahora Quien'] },{ a:'Camila Cabello', s:['Havana','Señorita','Bam Bam'] },{ a:'Becky G', s:['MAMIII','Sin Pijama','Mayores'] },
+                { a:'Rosalía', s:['DESPECHÁ','Bizcochito','Con Altura'] },{ a:'Rauw Alejandro', s:['Todo De Ti','Cúrame','Desesperados'] },{ a:'Farruko', s:['Pepas','Krippy Kush','Chillax'] },{ a:'Sech', s:['Otro Trago','Relación','Sal y Perrea'] },
+                { a:'Wisin & Yandel', s:['Rakata','Algo Me Gusta de Ti'] },{ a:'Prince Royce', s:['Darte un Beso','Corazón Sin Cara','Stand by Me'] },{ a:'Manuel Turizo', s:['La Bachata','Una Lady Como Tú'] },{ a:'Sebastián Yatra', s:['Traicionera','Tacones Rojos','Pareja del Año'] },
+                { a:'Gente de Zona', s:['La Gozadera','Bailando'] },{ a:'Chayanne', s:['Torero','Provócame','Madre Tierra'] },{ a:'Carlos Vives', s:['La Bicicleta','Robarte un Beso'] },{ a:'Zion & Lennox', s:['Otra vez','Embriágame'] },
+                { a:'Natti Natasha', s:['Criminal','Sin Pijama','Pa Mala Yo'] },{ a:'Piso 21', s:['Déjala que vuelva','Me Llamas'] }
+            ]
         }
-        function loadState(){
-            gold=parseInt(localStorage.getItem('mq_gold')||'500');sfxOn=localStorage.getItem('mq_sfx')!=='false';darkOn=localStorage.getItem('mq_dark')==='true';
-            if(darkOn)document.getElementById('app').classList.add('dark');
-            document.getElementById('darkToggle').textContent=darkOn?'AÇIK':'KAPALI';document.getElementById('sfxToggle').textContent=sfxOn?'AÇIK':'KAPALI';
-            const j=localStorage.getItem('mq_jokers');if(j)jokersOwned=JSON.parse(j);
-        }
-        function saveState(){localStorage.setItem('mq_gold',gold);localStorage.setItem('mq_sfx',sfxOn);localStorage.setItem('mq_dark',darkOn);localStorage.setItem('mq_jokers',JSON.stringify(jokersOwned))}
-        function togglePlay(){if(!audio.src)return;if(isPlaying)audio.pause();else audio.play().catch(e=>toast('⚠ Müzik başlatılamadı!'))}
-        function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');if(id==='market')renderMarket();if(id==='leaderboard')renderLeaderboard()}
-        function setLang(l){lang=l;selectedCats=[];document.getElementById('btnTR').className=l==='tr'?'btn small':'btn small outline';document.getElementById('btnEN').className=l==='en'?'btn small':'btn small outline';document.querySelectorAll('.cat').forEach(c=>c.classList.remove('selected'));renderCategories()}
-        function renderCategories(){document.getElementById('categories').innerHTML=categoriesData[lang].map(c=>`<div class="cat" data-id="${c.id}" onclick="toggleCat('${c.id}',this)"><span class="emoji">${c.emoji}</span>${c.label}</div>`).join('')}
-        function toggleCat(id,el){if(selectedCats.includes(id)){selectedCats=selectedCats.filter(c=>c!==id);el.classList.remove('selected')}else if(selectedCats.length<3){selectedCats.push(id);el.classList.add('selected')}else toast('En fazla 3 kategori!')}
+    };
 
-        async function startGame(){
-            if(!selectedCats.length)return toast('Kategori seçin!');
-            document.getElementById('loader').classList.add('active');gameActive=!0;score=0;lives=3;usedTracks.clear();timerFrozen=!1;timeLeft=15;allTracks=[];
-            try{
-                const terms=searchTerms[lang]||searchTerms['en'];let all=[];
-                for(const t of terms.slice(0,8)){const d=await fetchWithProxy(`https://itunes.apple.com/search?term=${t}&limit=15&entity=song&country=${lang==='tr'?'tr':'us'}`);if(d&&d.results)all.push(...d.results.filter(s=>s.previewUrl&&s.trackName&&s.artistName))}
-                const seen=new Set;allTracks=all.filter(t=>{if(seen.has(t.trackId))return!1;seen.add(t.trackId);return!0});
-                if(allTracks.length<4)throw new Error('Yetersiz');
-                shuffle(allTracks);showScreen('game');updateGameUI();renderJokers();nextRound();
-            }catch(e){toast('⚠ Şarkı yüklenemedi!');showScreen('menu')}finally{document.getElementById('loader').classList.remove('active')}
-        }
+        const itunesSearchTerms = { tr: ['Tarkan','Sezen+Aksu','Hadise','Duman','Ceza','Ezhel','Neşet+Ertaş','Barış+Manço','Müslüm+Gürses','İbrahim+Tatlıses','Ajda+Pekkan','Hande+Yener','MFÖ','Athena','Teoman','Şebnem+Ferah','Sıla','Murat+Boz','Gülşen','Kenan+Doğulu'], en: ['Taylor+Swift','Ed+Sheeran','Dua+Lipa','Queen','Eminem','Drake','Michael+Jackson','Madonna','Beyonce','Adele','Bruno+Mars','Rihanna','The+Weeknd','Lady+Gaga','Katy+Perry','Ariana+Grande','Harry+Styles','Billie+Eilish','Post+Malone','Justin+Bieber'] };
 
-        function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}}
-        function nextRound(){
-            if(!gameActive||lives<=0){endGame();return}
-            clearInterval(timerInterval);timeLeft=15;timerFrozen=!1;audio.pause();audio.src='';isPlaying=!1;
-            document.getElementById('playBtn').textContent='▶';document.getElementById('disc').classList.remove('playing');
-            const avail=allTracks.filter(t=>!usedTracks.has(t.trackId));if(!avail.length){usedTracks.clear();avail.push(...allTracks)}
-            currentTrack=avail[Math.floor(Math.random()*avail.length)];usedTracks.add(currentTrack.trackId);
+    function init() {
+        loadState();
+        renderCats('categories');
+        renderMultiCats();
+        renderMarket();
+        renderLB();
+        updateAllUI();
+        setTimeout(() => { const i = document.getElementById('intro'); if (i) i.style.display = 'none'; }, 3000);
+        audio.addEventListener('timeupdate', updateProgress);
+        audio.addEventListener('playing', () => { document.getElementById('disc').classList.add('playing'); document.getElementById('discWrapper').classList.add('playing'); document.getElementById('playBtn').textContent = '⏸'; document.getElementById('playBtn').classList.add('is-playing'); isPlaying = !0; document.getElementById('nowPlaying').textContent = '🎵 Şarkı Çalıyor...'; });
+        audio.addEventListener('pause', () => { document.getElementById('disc').classList.remove('playing'); document.getElementById('discWrapper').classList.remove('playing'); document.getElementById('playBtn').textContent = '▶'; document.getElementById('playBtn').classList.remove('is-playing'); isPlaying = !1 });
+        audio.addEventListener('ended', () => { document.getElementById('disc').classList.remove('playing'); document.getElementById('discWrapper').classList.remove('playing'); document.getElementById('playBtn').textContent = '▶'; document.getElementById('playBtn').classList.remove('is-playing'); isPlaying = !1 });
+        audio.addEventListener('error', (e) => { console.warn('Audio error:', e); document.getElementById('nowPlaying').textContent = '⚠ Ses yüklenemedi - Tahmine devam et'; });
+        const ci = document.getElementById('chatInput'); if (ci) ci.addEventListener('keypress', e => { if (e.key === 'Enter') sendChat(); });
+        cleanInactiveRooms();
+    }
 
-            const art=document.getElementById('albumArt');art.src=currentTrack.artworkUrl100.replace('100x100','300x300');
-            art.onerror=()=>{art.src='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23333" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="white" font-size="14">🎵</text></svg>'}
-            document.getElementById('progressBar').style.width='0%';document.getElementById('timerText').textContent='⏱ 15';
-            audio.src=currentTrack.previewUrl;audio.load();
-            setTimeout(()=>{audio.play().then(()=>console.log('✅ Çalıyor')).catch(()=>{})},500);
-            renderJokers();renderGameContent();startTimer();
-        }
+    function updateProgress() { if (audio.duration && isFinite(audio.duration)) { document.getElementById('progressBar').style.width = Math.min((audio.currentTime / audio.duration) * 100, 100) + '%'; } }
 
-        function startTimer(){
-            clearInterval(timerInterval);
-            timerInterval=setInterval(()=>{
-                if(!gameActive){clearInterval(timerInterval);return}
-                if(!timerFrozen){timeLeft--;document.getElementById('timerText').textContent='⏱ '+Math.max(timeLeft,0);document.getElementById('progressBar').style.width=((15-timeLeft)/15*100)+'%'}
-                if(timeLeft<=0&&!timerFrozen){clearInterval(timerInterval);lives--;playSFX('wrong');updateGameUI();if(lives<=0)endGame();else{toast('Süre doldu! -1 Can');setTimeout(nextRound,1000)}}
-            },1000);
-        }
+    function loadState() {
+        gold = parseInt(localStorage.getItem('mq_gold') || '500');
+        sfxOn = localStorage.getItem('mq_sfx') !== 'false';
+        darkOn = localStorage.getItem('mq_dark') === 'true';
+        if (darkOn) { document.getElementById('app').classList.add('dark'); document.body.classList.add('dark'); }
+        document.getElementById('darkToggle').textContent = darkOn ? 'AÇIK' : 'KAPALI';
+        document.getElementById('sfxToggle').textContent = sfxOn ? 'AÇIK' : 'KAPALI';
+        const j = localStorage.getItem('mq_jokers'); if (j) jokersOwned = JSON.parse(j);
+    }
 
-        function renderGameContent(){
-            const c=document.getElementById('gameContent');c.innerHTML='';if(!currentTrack)return;
-            const opts=[currentTrack];const pool=allTracks.filter(t=>t.trackId!==currentTrack.trackId);shuffle(pool);
-            for(const t of pool){if(opts.length>=4)break;opts.push(t)}
-            while(opts.length<4)opts.push({trackId:'x'+opts.length,trackName:'???',artistName:'???'});
-            shuffle(opts);
-            const ow=document.createElement('div');ow.className='options';
-            opts.forEach(o=>{const b=document.createElement('div');b.className='option';b.textContent=o.trackName;b.onclick=()=>handleAnswer(o,b,ow);ow.appendChild(b)});
-            c.appendChild(ow);
-        }
+    function saveState() { localStorage.setItem('mq_gold', gold); localStorage.setItem('mq_sfx', sfxOn); localStorage.setItem('mq_dark', darkOn); localStorage.setItem('mq_jokers', JSON.stringify(jokersOwned)); }
 
-        function handleAnswer(sel,el,wrap){
-            if(!gameActive)return;
-            const all=wrap.querySelectorAll('.option');all.forEach(b=>b.style.pointerEvents='none');
-            clearInterval(timerInterval);audio.pause();isPlaying=!1;
-            document.getElementById('playBtn').textContent='▶';document.getElementById('disc').classList.remove('playing');
-            if(sel.trackId===currentTrack.trackId){
-                el.classList.add('correct');const bonus=timeLeft>=11?50:timeLeft>=6?25:10;const pts=25+bonus;score+=pts;gold+=Math.floor(pts/2);playSFX('correct');
-                // DOĞRU CEVAP GÖSTERİMİ
-                showReveal(pts);
-                updateGameUI();saveState();
-                setTimeout(()=>{hideReveal();if(lives<=0)endGame();else nextRound()},3000);
-            }else{
-                el.classList.add('wrong');all.forEach(b=>{if(b.textContent===currentTrack.trackName)b.classList.add('correct')});lives--;playSFX('wrong');
-                updateGameUI();saveState();
-                if(lives<=0)setTimeout(endGame,800);else setTimeout(nextRound,1500);
+    function playBeep(freq, dur, type = 'sine') { if (!sfxOn) return; try { const ctx = new(window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.connect(g); g.connect(ctx.destination); g.gain.value = 0.06; o.type = type; o.frequency.value = freq; g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur); o.start(ctx.currentTime); o.stop(ctx.currentTime + dur); } catch (e) {} }
+
+    function togglePlay() { if (!audio.src) return; if (isPlaying) { audio.pause(); } else { const playPromise = audio.play(); if (playPromise !== undefined) { playPromise.catch(() => { document.getElementById('nowPlaying').textContent = '🔇 Sese dokunun'; playBeep(440, 0.1); }); } } }
+
+    function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); const t = document.getElementById(id); if (t) t.classList.add('active'); if (id === 'market') renderMarket(); if (id === 'leaderboard') renderLB(); if (id === 'singleplayer') { renderCats('categories'); selectedCats = []; } if (id === 'multiplayer') { renderMultiCats(); searchRooms(); } }
+
+    function setLang(l) { lang = l; selectedCats = []; multiCats = []; document.getElementById('btnTR').className = l === 'tr' ? 'btn small' : 'btn small outline'; document.getElementById('btnEN').className = l === 'en' ? 'btn small' : 'btn small outline'; renderCats('categories'); renderMultiCats(); }
+
+    function renderCats(cid) { const c = document.getElementById(cid); if (!c) return; c.innerHTML = catsData[lang].map(cat => `<div class="cat" data-id="${cat.id}" onclick="toggleCat('${cat.id}',this)"><span class="emoji">${cat.emoji}</span>${cat.label}</div>`).join(''); }
+
+    function renderMultiCats() { const c = document.getElementById('multiCatsCreate'); if (!c) return; c.innerHTML = catsData[lang].map(cat => `<div class="multi-cat" data-id="${cat.id}" onclick="toggleMultiCat('${cat.id}',this)"><span>${cat.emoji}</span>${cat.label}</div>`).join(''); }
+
+    function toggleCat(id, el) { if (selectedCats.includes(id)) { selectedCats = selectedCats.filter(c => c !== id); el.classList.remove('selected'); } else if (selectedCats.length < 3) { selectedCats.push(id); el.classList.add('selected'); } else toast('En fazla 3 kategori!'); }
+
+    function toggleMultiCat(id, el) { if (multiCats.includes(id)) { multiCats = multiCats.filter(c => c !== id); el.classList.remove('selected'); } else if (multiCats.length < 3) { multiCats.push(id); el.classList.add('selected'); } else toast('En fazla 3 kategori!'); }
+
+    async function fetchFilteredTracks(categories) {
+        const allApiTracks = await fetchFromiTunes();
+        const dbLang = demoDB[lang] || demoDB['en'];
+        const validArtists = new Set();
+        const catsToLoad = categories.includes('all_tr') || categories.includes('all_en') ? Object.keys(dbLang) : categories;
+        catsToLoad.forEach(cat => {
+            const artists = dbLang[cat];
+            if (artists) artists.forEach(a => validArtists.add(a.a.toLowerCase()));
+        });
+        const filtered = allApiTracks.filter(t => validArtists.has(t.artistName.toLowerCase()));
+        return filtered.length >= 4 ? filtered : []; 
             }
+
+        
+    async function fetchFromiTunes() {
+        const terms = itunesSearchTerms[lang] || itunesSearchTerms['en'];
+        const all = [];
+        for (const term of terms.slice(0, 15)) {
+            try {
+                const country = lang === 'tr' ? 'tr' : 'us';
+                const url = `https://itunes.apple.com/search?term=${term}&limit=20&entity=song&country=${country}`;
+                let data = null;
+                try { const res = await fetch(url); if (res.ok) data = await res.json(); } catch (e) {}
+                if (!data) { try { const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url)); if (res.ok) data = await res.json(); } catch (e) {} }
+                if (!data) { try { const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(url)); if (res.ok) data = await res.json(); } catch (e) {} }
+                if (data && data.results) all.push(...data.results.filter(s => s.previewUrl && s.trackName && s.artistName));
+            } catch (e) {}
+        }
+        const seen = new Set();
+        return all.filter(t => { if (seen.has(t.trackId)) return !1; seen.add(t.trackId); return !0; });
+    }
+
+    function loadDemo(categories) {
+        allTracks = [];
+        const dbLang = demoDB[lang] || demoDB['en'];
+        let tid = 0;
+        const catsToLoad = categories.includes('all_tr') || categories.includes('all_en') ? Object.keys(dbLang) : categories;
+        catsToLoad.forEach(cat => {
+            const artists = dbLang[cat];
+            if (artists) {
+                artists.forEach(a => {
+                    a.s.forEach(s => {
+                        allTracks.push({
+                            trackId: tid++,
+                            trackName: s,
+                            artistName: a.a,
+                            artworkUrl100: `https://picsum.photos/300/300?random=${tid}`,
+                            previewUrl: '',
+                            trackViewUrl: '#'
+                        });
+                    });
+                });
+            }
+        });
+    }
+
+    async function startSingleGame() {
+        if (!selectedCats.length) return toast('Lütfen kategori seçin!');
+        document.getElementById('loader').classList.add('active');
+        isMultiplayer = !1;
+        gameActive = !0;
+        score = 0;
+        usedTracks.clear();
+        timerFrozen = !1;
+        timeLeft = 15;
+        document.getElementById('miniLB').style.display = 'none';
+
+        const apiTracks = await fetchFilteredTracks(selectedCats);
+        if (apiTracks.length >= 4) {
+            allTracks = apiTracks.map(t => ({
+                trackId: t.trackId,
+                trackName: t.trackName,
+                artistName: t.artistName,
+                artworkUrl100: t.artworkUrl100,
+                previewUrl: t.previewUrl,
+                trackViewUrl: t.trackViewUrl
+            }));
+        } else {
+            loadDemo(selectedCats);
+            if (allTracks.length === 0) loadDemo(['all_tr']);
+        }
+        shuffle(allTracks);
+        showScreen('game');
+        updateGameUI();
+        renderJokers();
+        nextRound();
+        document.getElementById('loader').classList.remove('active');
+    }
+
+    function showMultiTab(tab) { document.getElementById('tabCreate').style.display = tab === 'create' ? 'block' : 'none'; document.getElementById('tabJoin').style.display = tab === 'join' ? 'block' : 'none'; document.getElementById('tabSearch').style.display = tab === 'search' ? 'block' : 'none'; document.querySelectorAll('#multiplayer .tab').forEach(t => t.classList.remove('active')); document.querySelectorAll('#multiplayer .tab')[tab === 'create' ? 0 : tab === 'join' ? 1 : 2].classList.add('active'); if (tab === 'search') searchRooms(); }
+
+    function cleanInactiveRooms() { db.ref('rooms').once('value').then(s => { const rooms = s.val() || {}; const now = Date.now(); Object.entries(rooms).forEach(([id, r]) => { if (now - (r.createdAt || 0) > TIMEOUT) { db.ref('rooms/' + id).remove(); } }); }); }
+
+    function searchRooms() { db.ref('rooms').once('value').then(s => { const rooms = s.val() || {}; const list = document.getElementById('roomList'); const openRooms = Object.entries(rooms).filter(([_, r]) => r.status === 'waiting' && Object.keys(r.players || {}).length < 4); if (!openRooms.length) { list.innerHTML = '<p class="hint-text">Açık oda bulunamadı. Yeni bir oda oluşturabilirsin.</p>'; return; } list.innerHTML = openRooms.map(([id, r]) => `<div class="room-item" onclick="quickJoin('${id}')"><div><b style="font-size:16px;">🏠 ${id}</b><div style="font-size:13px; color:var(--text2); margin-top:4px; font-weight:500;">👥 ${Object.keys(r.players||{}).length}/4 • Dil: ${r.lang||'tr'}</div></div><span style="color:var(--accent); font-weight:800; margin-left:auto;">Katıl →</span></div>`).join(''); }).catch(() => toast('Oda listesi alınamadı')); }
+
+    function quickJoin(code) { document.getElementById('roomCode').value = code; showMultiTab('join'); document.getElementById('nicknameJoin').focus(); }
+
+    function createRoom() { nickname = document.getElementById('nicknameCreate').value.trim(); if (!nickname) return toast('Lütfen takma adını gir!'); if (!multiCats.length) return toast('Kategori seçmelisin!'); roomId = Math.random().toString(36).substring(2, 8).toUpperCase(); playerId = 'p_' + Math.random().toString(36).substring(2, 10); isReady = !1; db.ref('rooms/' + roomId).set({ status: 'waiting', categories: multiCats, lang: lang, createdAt: Date.now() }).then(() => { db.ref('rooms/' + roomId + '/players/' + playerId).set({ nickname, ready: !1, score: 0 }).then(() => { enterLobby(); sendSystemMsg(nickname + ' odayı oluşturdu!'); }); }).catch(() => toast('Bağlantı hatası!')); }
+
+    function joinRoom() { nickname = document.getElementById('nicknameJoin').value.trim(); const code = document.getElementById('roomCode').value.trim().toUpperCase(); if (!nickname) return toast('Takma adını gir!'); if (!code) return toast('Oda kodunu gir!'); playerId = 'p_' + Math.random().toString(36).substring(2, 10); roomId = code; isReady = !1; db.ref('rooms/' + roomId).once('value').then(s => { const r = s.val(); if (!r) return toast('Böyle bir oda bulunamadı!'); if (r.status !== 'waiting') return toast('Bu oyun zaten başlamış!'); if (Object.keys(r.players || {}).length >= 4) return toast('Bu oda tamamen dolu!'); db.ref('rooms/' + roomId + '/players/' + playerId).set({ nickname, ready: !1, score: 0 }).then(() => { enterLobby(); sendSystemMsg(nickname + ' odaya katıldı!'); }); }).catch(() => toast('Bağlantı hatası!')); }
+
+    function enterLobby() { 
+        showScreen('lobby'); 
+        document.getElementById('lobbyCode').textContent = roomId; 
+        cleanupListeners(); 
+        playerListener = db.ref('rooms/' + roomId + '/players').on('value', s => { 
+            players = s.val() || {}; 
+            updatePlayerList(); 
+            if (gameActive && isMultiplayer) renderMiniLB(); 
+        }); 
+        statusListener = db.ref('rooms/' + roomId + '/status').on('value', s => { if (s.val() === 'playing') { cleanupListeners(); startMultiGame(); } }); 
+        roomListener = db.ref('rooms/' + roomId).on('value', s => { if (!s.exists()) { cleanupListeners(); toast('Oda kurucu tarafından kapatıldı!'); showScreen('menu'); } }); 
+        listenChat(); 
+    }
+
+    function cleanupListeners() { if (playerListener) db.ref('rooms/' + roomId + '/players').off('value', playerListener); if (statusListener) db.ref('rooms/' + roomId + '/status').off('value', statusListener); if (roomListener) db.ref('rooms/' + roomId).off('value', roomListener); if (chatListener) db.ref('rooms/' + roomId + '/chat').off('value', chatListener); playerListener = null; statusListener = null; roomListener = null; chatListener = null; }
+
+    function updatePlayerList() { const arr = Object.entries(players); document.getElementById('playerCount').textContent = arr.length; document.getElementById('playerList').innerHTML = arr.map(([id, p]) => `<div class="player-card"><div class="player-avatar">${id===playerId?'⭐':'🎧'}</div><span style="flex:1;">${p.nickname}${id===playerId?' <span style="color:var(--accent); font-size:12px;">(Sen)</span>':''}</span><span class="ready-dot ${p.ready?'ready-green':'ready-gray'}"></span><span style="font-size:12px;color:var(--text2);font-weight:600;">${p.ready?'Hazır':'Bekliyor'}</span></div>`).join(''); const allReady = arr.length >= 2 && arr.every(([_, p]) => p.ready); const btn = document.getElementById('btnReady'); btn.textContent = isReady ? '✅ Hazırsın' : 'Hazırım'; btn.className = 'btn' + (isReady ? ' gold' : ''); btn.disabled = !1; btn.onclick = handleReadyClick; document.getElementById('readyHint').textContent = allReady ? '🎮 Tüm oyuncular hazır! Oyun başlıyor...' : 'Tüm oyuncular hazır olunca oyun otomatik başlar'; if (allReady) { btn.style.display = 'none'; setTimeout(() => { db.ref('rooms/' + roomId).update({ status: 'playing', gameStartedAt: Date.now() }); }, 1500); } }
+
+    function handleReadyClick() { isReady = !isReady; db.ref('rooms/' + roomId + '/players/' + playerId + '/ready').set(isReady); updatePlayerList(); sendSystemMsg(nickname + (isReady ? ' hazır!' : ' bekliyor...')); }
+
+    function leaveRoom() { if (confirm('Odadan çıkmak istediğine emin misin?')) { cleanupListeners(); db.ref('rooms/' + roomId + '/players/' + playerId).remove(); if (Object.keys(players).length <= 1) db.ref('rooms/' + roomId).remove(); showScreen('menu'); } }
+
+        async function startMultiGame() {
+        isMultiplayer = !0;
+        gameActive = !0;
+        score = 0;
+        usedTracks.clear();
+        document.getElementById('miniLB').style.display = 'flex';
+        const snap = await db.ref('rooms/' + roomId).once('value');
+        const room = snap.val();
+        const cats = room?.categories || [];
+        const apiTracks = await fetchFilteredTracks(cats);
+        if (apiTracks.length >= 4) {
+            allTracks = apiTracks;
+        } else {
+            loadDemo(cats);
+            if (allTracks.length === 0) loadDemo(['all_tr']);
+        }
+        shuffle(allTracks);
+        showScreen('game');
+        updateGameUI();
+        renderJokers();
+        nextRound();
+    }
+
+    function listenChat() { if (chatListener) db.ref('rooms/' + roomId + '/chat').off('value', chatListener); chatListener = db.ref('rooms/' + roomId + '/chat').limitToLast(30).on('value', s => { const msgs = []; s.forEach(m => { msgs.push(m.val()); }); msgs.sort((a, b) => a.time - b.time); renderChat(msgs); }); }
+
+    function renderChat(msgs) { const c = document.getElementById('chatMessages'); if (!c) return; c.innerHTML = msgs.map(m => m.type === 'system' ? `<div class="chat-msg system">${m.text}</div>` : `<div class="chat-msg ${m.playerId===playerId?'mine':'other'}"><b style="font-size:11px;opacity:0.8;display:block;margin-bottom:2px;">${m.nickname||'?'}</b>${m.text}</div>`).join(''); c.scrollTop = c.scrollHeight; }
+
+    function sendChat() { const inp = document.getElementById('chatInput'); const text = inp.value.trim(); if (!text || !nickname) return; db.ref('rooms/' + roomId + '/chat').push({ playerId, nickname, text, time: Date.now(), type: 'message' }); inp.value = ''; }
+
+    function sendSystemMsg(text) { db.ref('rooms/' + roomId + '/chat').push({ text, time: Date.now(), type: 'system' }); }
+
+    function nextRound() {
+        if (!gameActive) return;
+        if (isMultiplayer && score >= TARGET) { endMultiGame(); return; }
+        clearInterval(timerInterval);
+        timeLeft = 15;
+        timerFrozen = !1;
+        audio.pause();
+        audio.src = '';
+        isPlaying = !1;
+        document.getElementById('playBtn').textContent = '▶';
+        document.getElementById('playBtn').classList.remove('is-playing');
+        document.getElementById('disc').classList.remove('playing');
+        document.getElementById('discWrapper').classList.remove('playing');
+        const avail = allTracks.filter(t => !usedTracks.has(t.trackId));
+        if (!avail.length) { usedTracks.clear(); avail.push(...allTracks); }
+        currentTrack = avail[Math.floor(Math.random() * avail.length)];
+        usedTracks.add(currentTrack.trackId);
+        document.getElementById('albumArt').src = currentTrack.artworkUrl100?.replace('100x100', '300x300') || currentTrack.artworkUrl100;
+        document.getElementById('progressBar').style.width = '0%';
+        document.getElementById('timerText').textContent = '⏱ 15';
+        document.getElementById('nowPlaying').textContent = '🎵 Tahmin et...';
+        if (currentTrack.previewUrl) {
+            audio.src = currentTrack.previewUrl;
+            audio.load();
+            setTimeout(() => {
+                if (gameActive) {
+                    const playPromise = audio.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(() => {
+                            document.getElementById('nowPlaying').textContent = '🔇 Oynatmak için tıkla';
+                        });
+                    }
+                }
+            }, 200);
+        } else {
+            document.getElementById('nowPlaying').textContent = '🎵 Müzik Çalıyor (Demo)';
+            playBeep(520, 0.15, 'triangle');
+        }
+        playBeep(520, 0.1, 'triangle');
+        renderJokers();
+        renderGameContent();
+        if (isMultiplayer) renderMiniLB();
+        startTimer();
         }
 
-        function showReveal(pts){
-            document.getElementById('revealCover').src=currentTrack.artworkUrl100.replace('100x100','300x300');
-            document.getElementById('revealArtist').textContent=currentTrack.artistName;
-            document.getElementById('revealTitle').textContent=currentTrack.trackName;
-            document.getElementById('revealLink').href=currentTrack.trackViewUrl||'#';
-            document.getElementById('revealPoints').textContent=pts;
-            document.getElementById('revealOverlay').classList.add('active');
-        }
-        function hideReveal(){document.getElementById('revealOverlay').classList.remove('active')}
+        function startTimer() { 
+        clearInterval(timerInterval); 
+        timerInterval = setInterval(() => { 
+            if (!gameActive) { clearInterval(timerInterval); return; } 
+            if (!timerFrozen) { 
+                timeLeft--; 
+                document.getElementById('timerText').textContent = '⏱ ' + Math.max(timeLeft, 0); 
+                document.getElementById('progressBar').style.width = Math.max(((15 - timeLeft) / 15 * 100), 0) + '%'; 
+            } 
+            if (timeLeft <= 0 && !timerFrozen) { 
+                clearInterval(timerInterval); 
+                if (isMultiplayer) { 
+                    score = Math.max(0, score - 5); 
+                    updateGameUI(); 
+                    db.ref('rooms/' + roomId + '/players/' + playerId + '/score').set(score); 
+                } 
+                playBeep(200, 0.3, 'sawtooth'); 
+                setTimeout(nextRound, 500); 
+            } 
+        }, 1000); 
+    }
 
-        function renderJokers(){
-            const a=document.getElementById('jokerArea');a.innerHTML='';
-            [{id:'fifty',emoji:'⚖️',label:'50:50',act:useJokerFifty},{id:'freeze',emoji:'⏳',label:'Dondur',act:useJokerFreeze}].forEach(j=>{
-                const o=jokersOwned[j.id]||0;const d=document.createElement('div');d.className='joker'+(o<=0?' used':'');
-                d.innerHTML=`${j.emoji} ${j.label}<br><small>${o} adet</small>`;d.onclick=()=>{if(o>0){jokersOwned[j.id]--;saveState();j.act();renderJokers()}else toast('Joker yok!')};a.appendChild(d);
-            });
-        }
-        function useJokerFifty(){const all=document.querySelectorAll('.option');const correct=currentTrack.trackName;Array.from(all).filter(b=>b.textContent!==correct&&!b.classList.contains('hidden')).slice(0,2).forEach(b=>b.classList.add('hidden'));playSFX('correct');toast('⚖️ 50:50!')}
-        function useJokerFreeze(){timerFrozen=!0;toast('⏳ Donduruldu! (5sn)');setTimeout(()=>{if(gameActive){timerFrozen=!1;toast('⏳ Devam')}},5000)}
-        function skipTrack(){if(!gameActive)return;lives--;playSFX('wrong');updateGameUI();if(lives<=0)endGame();else nextRound()}
-        function quitGame(){if(confirm('Çıkmak istediğine emin misin?')){gameActive=!1;clearInterval(timerInterval);audio.pause();audio.src='';isPlaying=!1;document.getElementById('disc').classList.remove('playing');showScreen('menu')}}
-        function updateGameUI(){document.getElementById('scoreBadge').textContent='⭐ '+score;document.getElementById('goldBadge').textContent='🪙 '+gold;document.getElementById('livesBadge').textContent='❤️'.repeat(Math.max(lives,0))||'💀';if(lives<=0)gameActive=!1}
-        function updateAllUI(){document.getElementById('marketGold').textContent=gold;updateGameUI()}
-        function endGame(){gameActive=!1;clearInterval(timerInterval);audio.pause();audio.src='';isPlaying=!1;document.getElementById('disc').classList.remove('playing');document.getElementById('playBtn').textContent='▶';saveLeaderboard(score);playSFX('gameover');toast('Oyun bitti! Skor: '+score);setTimeout(()=>{alert('🎯 Oyun Bitti!\n\nSkor: '+score+'\nAltın: '+gold);showScreen('menu')},500)}
-        function renderMarket(){document.getElementById('marketGold').textContent=gold;document.getElementById('marketItems').innerHTML=[{id:'fifty',emoji:'⚖️',name:'50:50',desc:'İki yanlışı eler',cost:75},{id:'freeze',emoji:'⏳',name:'Dondurucu',desc:'5 saniye',cost:100}].map(i=>`<div class="market-item"><div class="m-emoji">${i.emoji}</div><div class="m-info"><div class="m-name">${i.name}</div><div class="m-desc">${i.desc}</div></div><div class="m-cost">${i.cost} 🪙</div><button class="btn small gold" onclick="buyJoker('${i.id}',${i.cost})">Al</button></div>`).join('')}
-        function buyJoker(id,cost){if(gold>=cost){gold-=cost;jokersOwned[id]=(jokersOwned[id]||0)+1;saveState();updateAllUI();renderMarket();playSFX('correct');toast('✅ Alındı!')}else toast('❌ Yetersiz!')}
-        function getLB(){try{return JSON.parse(localStorage.getItem('mq_lb')||'[]')}catch(e){return[]}}
-        function saveLeaderboard(s){const lb=getLB();lb.push({score:s,date:new Date().toLocaleDateString('tr-TR')});lb.sort((a,b)=>b.score-a.score);localStorage.setItem('mq_lb',JSON.stringify(lb.slice(0,10)))}
-        function renderLeaderboard(){const lb=getLB();document.getElementById('lbList').innerHTML=lb.length?lb.map((e,i)=>`<div class="lb-item"><div class="lb-rank">${['🥇','🥈','🥉'][i]||(i+1+'.')}</div><div class="lb-name">${e.date}</div><div class="lb-score">⭐ ${e.score}</div></div>`).join(''):'<div class="lb-item"><span>🏆 Henüz skor yok</span></div>'}
-        function resetLB(){if(confirm('Sıfırlansın mı?')){localStorage.removeItem('mq_lb');renderLeaderboard();toast('🗑 Sıfırlandı')}}
-        function toggleDark(){darkOn=!darkOn;document.getElementById('app').classList.toggle('dark',darkOn);document.getElementById('darkToggle').textContent=darkOn?'AÇIK':'KAPALI';saveState()}
-        function toggleSFX(){sfxOn=!sfxOn;document.getElementById('sfxToggle').textContent=sfxOn?'AÇIK':'KAPALI';saveState()}
-        function playSFX(type){if(!sfxOn)return;try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator();const g=ctx.createGain();o.connect(g);g.connect(ctx.destination);g.gain.value=0.07;const t=ctx.currentTime;if(type==='correct'){o.type='sine';o.frequency.setValueAtTime(660,t);o.frequency.setValueAtTime(880,t+0.1);g.gain.exponentialRampToValueAtTime(0.001,t+0.25);o.start(t);o.stop(t+0.25)}else if(type==='wrong'){o.type='sawtooth';o.frequency.setValueAtTime(180,t);o.frequency.setValueAtTime(100,t+0.2);g.gain.exponentialRampToValueAtTime(0.001,t+0.3);o.start(t);o.stop(t+0.3)}else if(type==='gameover'){o.type='sine';o.frequency.setValueAtTime(380,t);o.frequency.setValueAtTime(280,t+0.3);o.frequency.setValueAtTime(180,t+0.6);g.gain.setValueAtTime(0.1,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.8);o.start(t);o.stop(t+0.8)}}catch(e){}}
-        function toast(msg){const old=document.querySelector('.toast');if(old)old.remove();const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500)}
-        init();
-    </script>
+    function renderGameContent() { const c = document.getElementById('gameContent'); c.innerHTML = ''; if (!currentTrack) return; const opts = [currentTrack]; const pool = allTracks.filter(t => t.trackId !== currentTrack.trackId); shuffle(pool); for (const t of pool) { if (opts.length >= 4) break; opts.push(t); } while (opts.length < 4) opts.push({ trackId: 'x' + opts.length, trackName: '???', artistName: '???' }); shuffle(opts); const ow = document.createElement('div'); ow.className = 'options'; opts.forEach(o => { const b = document.createElement('div'); b.className = 'option'; b.textContent = o.trackName; b.onclick = () => handleAnswer(o, b, ow); ow.appendChild(b); }); c.appendChild(ow); }
+
+    function handleAnswer(sel, el, wrap) { if (!gameActive) return; const all = wrap.querySelectorAll('.option'); all.forEach(b => b.style.pointerEvents = 'none'); clearInterval(timerInterval); audio.pause(); isPlaying = !1; document.getElementById('playBtn').textContent = '▶'; document.getElementById('playBtn').classList.remove('is-playing'); document.getElementById('disc').classList.remove('playing'); document.getElementById('discWrapper').classList.remove('playing'); if (sel.trackId === currentTrack.trackId) { el.classList.add('correct'); const bonus = timeLeft >= 11 ? 50 : timeLeft >= 6 ? 25 : 10; const pts = 25 + bonus; score += pts; gold += Math.floor(pts / 2); playBeep(660, 0.2); playBeep(880, 0.2); showReveal(pts); updateGameUI(); saveState(); if (isMultiplayer) { db.ref('rooms/' + roomId + '/players/' + playerId + '/score').set(score); if (score >= TARGET) { setTimeout(endMultiGame, 2000); return; } } setTimeout(() => { hideReveal(); nextRound(); }, 3000); } else { el.classList.add('wrong'); all.forEach(b => { if (b.textContent === currentTrack.trackName) b.classList.add('correct'); }); if (isMultiplayer) { score = Math.max(0, score - 5); updateGameUI(); db.ref('rooms/' + roomId + '/players/' + playerId + '/score').set(score); } playBeep(180, 0.3, 'sawtooth'); updateGameUI(); saveState(); setTimeout(nextRound, 1500); } }
+
+    function renderMiniLB() { const lb = document.getElementById('miniLB'); const sorted = Object.entries(players).sort((a, b) => (b[1].score || 0) - (a[1].score || 0)); lb.innerHTML = '<div style="font-weight:900; font-size:13px; text-align:center; color:var(--text2); margin-bottom:4px;">🏆 HEDEF: ' + TARGET + ' PUAN</div>' + sorted.map(([id, p], i) => `<div style="display:flex; justify-content:space-between; align-items:center; font-weight:700; font-size:14px; padding:4px 8px; border-radius:10px; background:${id===playerId?'rgba(255,65,108,0.1)':'transparent'};"><span>${['🥇','🥈','🥉'][i]||'👤'} ${p.nickname}</span><span style="color:var(--accent);">⭐ ${p.score||0}</span></div>`).join(''); }
+
+    function showReveal(pts) { document.getElementById('revealCover').src = currentTrack.artworkUrl100.replace('100x100', '600x600'); document.getElementById('revealArtist').textContent = currentTrack.artistName; document.getElementById('revealTitle').textContent = currentTrack.trackName; document.getElementById('revealLink').href = currentTrack.trackViewUrl || '#'; document.getElementById('revealPoints').textContent = pts; document.getElementById('revealOverlay').classList.add('active'); }
+
+    function hideReveal() { document.getElementById('revealOverlay').classList.remove('active'); }
+
+    function renderJokers() { 
+        const a = document.getElementById('jokerArea'); 
+        a.innerHTML = ''; 
+        if (isMultiplayer) { 
+            a.innerHTML = '<div class="joker used" style="justify-content:center; grid-column: 1 / -1;">🃏 Çok Oyunculuda Devre Dışı</div>'; 
+            return; 
+        } 
+        [
+            { id: 'fifty', emoji: '⚖️', label: 'Yarı Yarıya', act: useJokerFifty }, 
+            { id: 'freeze', emoji: '⏳', label: 'Dondur', act: useJokerFreeze },
+            { id: 'skip', emoji: '⏭️', label: 'Pas Geç', act: useJokerSkip },
+            { id: 'time', emoji: '⏱️', label: '+10 Saniye', act: useJokerTime }
+        ].forEach(j => { 
+            const o = jokersOwned[j.id] || 0; 
+            const d = document.createElement('div'); 
+            d.className = 'joker' + (o <= 0 ? ' used' : ''); 
+            d.innerHTML = `<span style="font-size:20px;">${j.emoji}</span> <span>${j.label}</span><small>${o} adet kaldı</small>`; 
+            d.onclick = () => { if (o > 0) { jokersOwned[j.id]--; saveState(); j.act(); renderJokers(); } else toast('Bu jokerden kalmadı!'); }; 
+            a.appendChild(d); 
+        }); 
+    }
+
+    function useJokerFifty() { const all = document.querySelectorAll('.option'); const correct = currentTrack.trackName; Array.from(all).filter(b => b.textContent !== correct && !b.classList.contains('hidden')).slice(0, 2).forEach(b => b.classList.add('hidden')); playBeep(500, 0.15); }
+
+    function useJokerFreeze() { timerFrozen = !0; toast('⏳ Zaman 5 saniyeliğine durdu!'); setTimeout(() => { if (gameActive) { timerFrozen = !1; toast('⏳ Zaman tekrar akıyor!'); } }, 5000); }
+
+    function useJokerSkip() {
+        toast('⏭️ Şarkı atlandı!');
+        playBeep(440, 0.2);
+        nextRound();
+    }
+
+    function useJokerTime() {
+        timeLeft += 10;
+        toast('⏱️ +10 Saniye eklendi!');
+        document.getElementById('timerText').textContent = '⏱ ' + timeLeft;
+        document.getElementById('progressBar').style.width = Math.max(((15 - timeLeft) / 15 * 100), 0) + '%';
+        playBeep(600, 0.2);
+    }
+
+    function quitGame() { if (confirm('Oyundan çıkmak istediğine emin misin? Puanların silinecek.')) { gameActive = !1; clearInterval(timerInterval); audio.pause(); audio.src = ''; document.getElementById('disc').classList.remove('playing'); document.getElementById('discWrapper').classList.remove('playing'); if (isMultiplayer) { cleanupListeners(); db.ref('rooms/' + roomId + '/players/' + playerId).remove(); if (Object.keys(players).length <= 1) db.ref('rooms/' + roomId).remove(); showScreen('menu'); } else { showScreen('menu'); } } }
+
+    function endMultiGame() { gameActive = !1; clearInterval(timerInterval); audio.pause(); audio.src = ''; document.getElementById('disc').classList.remove('playing'); document.getElementById('discWrapper').classList.remove('playing'); const winner = Object.entries(players).sort((a, b) => (b[1].score || 0) - (a[1].score || 0))[0]; playBeep(660, 0.3); playBeep(880, 0.4); setTimeout(() => { alert(`🏆 KAZANAN: ${winner[1].nickname}\nPuan: ${winner[1].score}`); db.ref('rooms/' + roomId).update({ status: 'finished', winner: winner[0] }).then(() => { cleanupListeners(); showScreen('lobby'); db.ref('rooms/' + roomId).update({ status: 'waiting', createdAt: Date.now() }); Object.keys(players).forEach(k => { db.ref('rooms/' + roomId + '/players/' + k).update({ score: 0, ready: !1 }); }); enterLobby(); }); }, 500); }
+
+    function updateGameUI() { document.getElementById('scoreBadge').textContent = score; document.getElementById('goldBadge').textContent = gold; }
+
+    function updateAllUI() { const mg = document.getElementById('marketGold'); if (mg) mg.textContent = gold + ' 🪙'; updateGameUI(); }
+
+    function renderMarket() { 
+        document.getElementById('marketGold').textContent = gold + ' 🪙'; 
+        document.getElementById('marketItems').innerHTML = [
+            { id: 'fifty', emoji: '⚖️', name: 'Yarı Yarıya', desc: 'Yanlış 2 şıkkı eler', cost: 75 }, 
+            { id: 'freeze', emoji: '⏳', name: 'Zamanı Durdur', desc: 'Süreyi 5 sn dondurur', cost: 100 },
+            { id: 'skip', emoji: '⏭️', name: 'Pas Geç', desc: 'Şarkıyı cezasız atlar', cost: 150 },
+            { id: 'time', emoji: '⏱️', name: '+10 Saniye', desc: 'Süreye 10 saniye ekler', cost: 50 }
+        ].map(i => `<div class="market-item"><div class="m-emoji">${i.emoji}</div><div class="m-info"><div class="m-name">${i.name}</div><div class="m-desc">${i.desc}</div></div><div class="m-cost">${i.cost} 🪙</div><button class="btn small gold" onclick="buyJoker('${i.id}',${i.cost})">Satın Al</button></div>`).join(''); 
+    }
+
+    function buyJoker(id, cost) { if (gold >= cost) { gold -= cost; jokersOwned[id] = (jokersOwned[id] || 0) + 1; saveState(); updateAllUI(); renderMarket(); playBeep(880, 0.2); toast('✅ Joker başarıyla alındı!'); } else toast('❌ Altının yetersiz!'); }
+
+    function getLB() { try { return JSON.parse(localStorage.getItem('mq_lb') || '[]'); } catch (e) { return []; } }
+
+    function saveLB(s) { const lb = getLB(); lb.push({ score: s, date: new Date().toLocaleDateString('tr-TR') }); lb.sort((a, b) => b.score - a.score); localStorage.setItem('mq_lb', JSON.stringify(lb.slice(0, 10))); }
+
+    function renderLB() { const lb = getLB(); document.getElementById('lbList').innerHTML = lb.length ? lb.map((e, i) => `<div class="lb-item"><div class="lb-rank">${['🥇','🥈','🥉'][i]||(i+1+'.')}</div><div class="lb-name">${e.date}</div><div class="lb-score">⭐ ${e.score}</div></div>`).join('') : '<div class="lb-item" style="justify-content:center;color:var(--text2);"><span>🏆 Henüz kaydedilmiş bir skor yok</span></div>'; }
+
+    function resetLB() { if (confirm('Tüm skorları silmek istediğine emin misin?')) { localStorage.removeItem('mq_lb'); renderLB(); toast('Skor tablosu sıfırlandı'); } }
+
+    function toggleDark() { darkOn = !darkOn; document.getElementById('app').classList.toggle('dark', darkOn); document.body.classList.toggle('dark', darkOn); document.getElementById('darkToggle').textContent = darkOn ? 'AÇIK' : 'KAPALI'; saveState(); }
+
+    function toggleSFX() { sfxOn = !sfxOn; document.getElementById('sfxToggle').textContent = sfxOn ? 'AÇIK' : 'KAPALI'; saveState(); }
+
+    function shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
+
+    function toast(msg) { const old = document.querySelector('.toast'); if (old) old.remove(); const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2500); }
+
+    window.addEventListener('beforeunload', () => { if (roomId && playerId) { cleanupListeners(); db.ref('rooms/' + roomId + '/players/' + playerId).remove(); } });
+
+    init();
+</script>
 </body>
 </html>
-   
