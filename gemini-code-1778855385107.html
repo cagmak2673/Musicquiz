@@ -1,0 +1,2145 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Music Quiz PRO</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --accent-grad: linear-gradient(135deg, #FF416C, #FF4B2B);
+            --accent: #FF416C;
+            --accent-hover: #ff2a55;
+            --accent2: #ff768e;
+            --gold: #F5A623;
+            --gold-grad: linear-gradient(135deg, #F5A623, #F8E71C);
+            --success: #10B981;
+            --error: #EF4444;
+            --text: #1f2937;
+            --text2: #6b7280;
+            --border: #e5e7eb;
+            --shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
+            --shadow-hover: 0 25px 50px -12px rgba(255, 65, 108, 0.25);
+            --radius: 28px;
+        }
+        .dark {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --text2: #94a3b8;
+            --border: #334155;
+            --shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+            --shadow-hover: 0 25px 50px -12px rgba(255, 65, 108, 0.4);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            font-family: 'Outfit', system-ui, sans-serif;
+        }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background 0.4s ease, color 0.4s ease;
+            padding: 12px;
+            overflow: hidden;
+        }
+        .app {
+            width: 440px;
+            max-width: 100%;
+            height: calc(100vh - 24px);
+            max-height: 900px;
+            background: var(--card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            transition: background 0.4s ease, box-shadow 0.4s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .screen {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            padding: 20px 18px;
+            overflow-y: hidden;
+            animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            flex: 1;
+        }
+        .screen.active {
+            display: flex;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        #intro {
+            position: fixed;
+            inset: 0;
+            background: var(--accent-grad);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            animation: introFadeOut 0.8s 3s forwards cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+        }
+        #intro .intro-bg {
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 60%);
+            animation: rotateBg 8s linear infinite;
+        }
+        @keyframes rotateBg { to { transform: rotate(360deg); } }
+        #intro .intro-content { position: relative; z-index: 2; text-align: center; }
+        #intro .icon {
+            font-size: 80px;
+            animation: pulseIcon 1.5s infinite alternate;
+            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+        }
+        #intro .title {
+            font-size: 48px;
+            color: #fff;
+            font-weight: 900;
+            letter-spacing: 4px;
+            margin-top: 20px;
+            text-align: center;
+            line-height: 1;
+            text-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+        #intro .sub {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 600;
+            letter-spacing: 2px;
+            margin-top: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 6px 16px;
+            border-radius: 20px;
+            backdrop-filter: blur(4px);
+        }
+        .brand-signature {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 700;
+            letter-spacing: 3px;
+            margin-top: 40px;
+            text-transform: uppercase;
+        }
+        @keyframes pulseIcon {
+            from { transform: scale(1) translateY(0); }
+            to { transform: scale(1.15) translateY(-10px); }
+        }
+        @keyframes introFadeOut { to { opacity: 0; visibility: hidden; } }
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            border-radius: var(--radius);
+        }
+        .overlay.active { display: flex; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .reveal-cover, .gameover-cover {
+            width: 140px;
+            height: 140px;
+            border-radius: 24px;
+            object-fit: cover;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 16px;
+        }
+        .reveal-title { font-size: 22px; font-weight: 800; color: #fff; text-align: center; line-height: 1.2; }
+        .reveal-artist { font-size: 15px; font-weight: 600; color: var(--gold); text-align: center margin-bottom: 6px; }
+        .reveal-link {
+            font-size: 13px;
+            color: #fff;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 6px 14px;
+            border-radius: 20px;
+            margin: 10px 0;
+            transition: 0.2s;
+            display: inline-block;
+        }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-shrink: 0; position: relative; }
+        .logo { font-weight: 900; font-size: 20px; background: var(--accent-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.5px; }
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .icon-btn:active { transform: scale(0.9); background: var(--border); }
+        .btn {
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+            border-radius: 14px;
+            padding: 14px;
+            font-size: 14px;
+            transition: all 0.2s;
+            background: var(--accent-grad);
+            color: #fff;
+            text-align: center;
+            box-shadow: 0 8px 20px -6px rgba(255, 65, 108, 0.5);
+            font-family: 'Outfit', sans-serif;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn.outline { background: transparent; border: 2px solid var(--border); color: var(--text); box-shadow: none; }
+        .btn.outline:hover { border-color: var(--accent); color: var(--accent); }
+        .btn.gold { background: var(--gold-grad); color: #fff; box-shadow: 0 8px 20px -6px rgba(245, 166, 35, 0.5); border: none; }
+        .btn.small { padding: 8px 14px; font-size: 13px; border-radius: 12px; }
+        .btn:disabled { opacity: 0.6; pointer-events: none; filter: grayscale(1); }
+        
+        .nav-dropdown {
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background: var(--card);
+            border: 2px solid var(--border);
+            border-radius: 18px;
+            box-shadow: var(--shadow-hover);
+            display: none;
+            flex-direction: column;
+            padding: 8px;
+            gap: 6px;
+            z-index: 50;
+            min-width: 160px;
+            animation: fadeIn 0.2s ease;
+        }
+        .nav-dropdown.active { display: flex; }
+        .nav-dropdown .btn { justify-content: flex-start; padding: 10px 14px; border: none; }
+
+        .mode-cards { display: flex; flex-direction: column; gap: 12px; flex: 1; justify-content: center; }
+        .mode-card {
+            padding: 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            border: 2px solid var(--border);
+            background: var(--card);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .mode-card:active { transform: scale(0.98); }
+        .mode-emoji { font-size: 36px; background: var(--bg); width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 16px; }
+        .mode-info { flex: 1; }
+        .mode-name { font-weight: 800; font-size: 17px; display: block; }
+        .mode-desc { font-size: 13px; color: var(--text2); font-weight: 500; }
+        .cats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex-shrink: 0; }
+        .multi-cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex-shrink: 0; }
+        .cat, .multi-cat {
+            padding: 12px 8px;
+            border-radius: 14px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            border: 2px solid var(--border);
+            background: var(--bg);
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text);
+        }
+        .cat .emoji, .multi-cat span { font-size: 22px; }
+        .cat.selected, .multi-cat.selected {
+            background: var(--accent-grad);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 6px 12px -4px rgba(255, 65, 108, 0.4);
+        }
+        .input {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 14px;
+            border: 2px solid var(--border);
+            font-size: 16px; 
+            font-weight: 600;
+            background: var(--bg);
+            color: var(--text);
+            outline: none;
+            transition: all 0.2s;
+        }
+        .input:focus { border-color: var(--accent); background: var(--card); }
+        .tabs { display: flex; gap: 8px; margin-bottom: 14px; background: var(--bg); padding: 5px; border-radius: 16px; flex-shrink: 0; }
+        .tab {
+            flex: 1;
+            padding: 10px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 14px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text2);
+        }
+        .tab.active { background: var(--card); color: var(--accent); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); }
+        .game-stats { display: flex; gap: 10px; margin-bottom: 14px; align-items: center; flex-shrink: 0; }
+        .stat {
+            background: var(--card);
+            border: 2px solid var(--border);
+            padding: 10px 16px;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 16px;
+            flex: 1;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-close-game {
+            width: 44px;
+            height: 44px;
+            border-radius: 16px;
+            border: 2px solid var(--error);
+            background: var(--card);
+            color: var(--error);
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .lobby-header { text-align: center; padding: 20px; background: var(--accent-grad); border-radius: 20px; color: #fff; margin-bottom: 14px; flex-shrink: 0; }
+        .room-code {
+            font-size: 36px;
+            font-weight: 900;
+            letter-spacing: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px 20px;
+            border-radius: 14px;
+            display: inline-block;
+            margin: 12px 0 6px 0;
+        }
+        .player-list { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; max-height: 120px; overflow-y: auto; }
+        .player-card {
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            border-radius: 16px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            gap: 10px;
+            font-weight: 700;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+        .ready-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text2); }
+        .ready-green { background: var(--success); box-shadow: 0 0 8px var(--success); }
+        .chat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 18px; padding: 10px; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+        .chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; font-size: 13px; padding-right: 4px; min-height: 0; }
+        .chat-msg { padding: 6px 10px; border-radius: 12px; max-width: 80%; word-break: break-word; font-weight: 500; font-size: 13px; }
+        .chat-msg.mine { background: var(--accent-grad); color: #fff; align-self: flex-end; }
+        .chat-msg.other { background: var(--card); color: var(--text); border: 1px solid var(--border); align-self: flex-start; }
+        .chat-msg.system { background: transparent; color: var(--text2); align-self: center; font-size: 11px; font-weight: 600; }
+        .chat-input-row { display: flex; gap: 8px; flex-shrink: 0; }
+        .chat-input { flex: 1; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); font-size: 14px; outline: none; background: var(--card); color: var(--text); }
+        .chat-send { width: 40px; height: 40px; border-radius: 12px; border: none; background: var(--accent); color: #fff; cursor: pointer; font-size: 16px; }
+        .disc-wrapper { position: relative; width: 100px; height: 100px; margin: 4px auto; flex-shrink: 0; }
+        .disc {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #2a2a2a 15%, #111 50%, #000 85%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: spinDisc 4s linear infinite paused;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            border: 3px solid #333;
+        }
+        .disc.playing { animation-play-state: running; }
+        .disc img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #111; background: #222; }
+        @keyframes spinDisc { to { transform: rotate(360deg); } }
+        .play-controls { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+        .play-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: none;
+            background: var(--accent-grad);
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(255, 65, 108, 0.4);
+        }
+        .now-playing { font-size: 13px; font-weight: 700; margin: 8px 0 4px 0; color: var(--accent); background: var(--bg); padding: 6px 14px; border-radius: 16px; border: 1px solid var(--border); }
+        .progress { width: 100%; height: 6px; background: var(--border); border-radius: 8px; margin: 6px 0; flex-shrink: 0; }
+        .progress .bar { height: 100%; background: var(--accent-grad); border-radius: 8px; transition: width 0.1s linear; }
+        .timer { text-align: center; font-weight: 900; font-size: 18px; color: var(--text); flex-shrink: 0; }
+        .jokers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex-shrink: 0; }
+        .joker {
+            padding: 10px 6px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 800;
+            text-align: center;
+            cursor: pointer;
+            border: 2px solid var(--gold);
+            background: rgba(245, 166, 35, 0.05);
+            color: var(--gold);
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .joker.used { opacity: 0.4; pointer-events: none; border-color: var(--border); color: var(--text2); background: transparent; }
+        .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; align-content: center; }
+        .option {
+            padding: 16px 10px;
+            border-radius: 18px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            border: 2px solid var(--border);
+            background: var(--card);
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 55px;
+        }
+        .option.correct { background: var(--success) !important; color: #fff !important; border-color: var(--success) !important; }
+        .option.wrong { background: var(--error) !important; color: #fff !important; border-color: var(--error) !important; animation: shake 0.4s; }
+        .option.hidden { opacity: 0; pointer-events: none; transform: scale(0.8); }
+        @keyframes shake { 0%, 100% { transform: translateX(0) } 25% { transform: translateX(-5px) } 75% { transform: translateX(5px) } }
+        .scroll-list { flex: 1; overflow-y: auto; min-height: 0; padding-right: 4px; }
+        .list-item {
+            display: flex;
+            align-items: center;
+            padding: 14px;
+            border-radius: 18px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            margin-bottom: 8px;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        .list-item:last-child { margin-bottom: 0; }
+        .xp-bar { width: 100%; height: 8px; background: var(--border); border-radius: 8px; overflow: hidden; margin-top: 4px; }
+        .xp-fill { height: 100%; background: var(--accent-grad); border-radius: 8px; transition: width 0.3s; }
+        .badge { background: var(--accent-grad); color: #fff; padding: 4px 10px; border-radius: 10px; font-weight: 800; font-size: 12px; }
+        .toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--text);
+            color: var(--bg);
+            padding: 12px 24px;
+            border-radius: 28px;
+            font-weight: 700;
+            font-size: 14px;
+            z-index: 9999;
+            pointer-events: none;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slideDown { from { opacity: 0; transform: translateX(-50%) translateY(-30px) } to { opacity: 1; transform: translateX(-50%) translateY(0) } }
+        .hint-text { text-align: center; font-size: 12px; color: var(--text2); font-weight: 500; flex-shrink: 0; margin-bottom: 8px; }
+        .lang-row { display: flex; gap: 8px; margin: 8px 0; background: var(--bg); padding: 5px; border-radius: 16px; flex-shrink: 0; }
+        .difficulty-row { display: flex; gap: 8px; margin: 4px 0; background: var(--bg); padding: 6px; border-radius: 14px; flex-shrink: 0; }
+        .difficulty-row .btn { flex: 1; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+        
+        .achievement-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 14px;
+            background: rgba(245, 166, 35, 0.1);
+            color: var(--gold);
+            font-size: 12px;
+            font-weight: 800;
+            border: 1px solid var(--gold);
+            margin: 4px;
+        }
+        .achievement-badge.locked {
+            background: var(--bg);
+            color: var(--text2);
+            border-color: var(--border);
+            filter: grayscale(1);
+        }
+        .notif-dot {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 10px;
+            height: 10px;
+            background: var(--error);
+            border-radius: 50%;
+            display: none;
+        }
+
+        .avatar-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .avatar-option {
+            font-size: 36px;
+            background: var(--bg);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+        }
+        .avatar-option:hover, .avatar-option.selected {
+            background: var(--card);
+            border-color: var(--accent);
+            transform: scale(1.1);
+        }
+        .equipped-badge {
+            display: inline-block;
+            margin-left: 4px;
+            font-size: 1.1em;
+        }
+        
+        .form-card {
+            width: 100%;
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+        
+        /* Dinamik Auth Ekranları Geçişi */
+        .auth-view {
+            display: none;
+            width: 100%;
+            animation: fadeIn 0.3s ease;
+        }
+        .auth-view.active {
+            display: block;
+        }
+    </style>
+</head>
+<body onclick="closeNavMenu(event)">
+    <div id="intro">
+        <div class="intro-bg"></div>
+        <div class="intro-content">
+            <div class="icon">🎧</div>
+            <div class="title">MUSIC QUIZ</div>
+            <div class="sub">PRO EDITION</div>
+            <div class="brand-signature">BY ÇAĞDAŞ</div>
+        </div>
+    </div>
+
+    <div class="app" id="app">
+        <div class="overlay" id="loader">
+            <div class="spinner"></div>
+            <p style="color:#fff;margin-top:16px;font-weight:700;font-size:15px;">🎵 Bekleniyor...</p>
+        </div>
+        
+        <div class="overlay" id="avatarOverlay" style="z-index: 101;">
+            <div style="background:var(--card);padding:24px;border-radius:24px;width:90%;max-width:340px;text-align:center;box-shadow:var(--shadow-hover);">
+                <h3 style="margin-bottom:20px;color:var(--text);">Profil Fotoğrafı Seç</h3>
+                <div class="avatar-grid" id="avatarGridContainer"></div>
+                <button class="btn" style="width:100%;" onclick="closeAvatarSelector()">Kapat</button>
+            </div>
+        </div>
+
+        <div class="overlay" id="revealOverlay">
+            <img class="reveal-cover" id="revealCover" src="" alt="Kapak">
+            <div class="reveal-artist" id="revealArtist"></div>
+            <div class="reveal-title" id="revealTitle"></div>
+            <a class="reveal-link" id="revealLink" href="#" target="_blank">🎵 iTunes</a>
+            <div style="background:var(--success);color:#fff;font-weight:900;font-size:18px;padding:12px 24px;border-radius:18px;margin-top:10px;">✅ +<span id="revealPoints">0</span></div>
+        </div>
+        <div class="overlay" id="gameoverOverlay">
+            <div style="font-size:40px;margin-bottom:10px;">🏆</div>
+            <div style="font-size:28px;font-weight:900;color:#fff;">Oyun Bitti!</div>
+            <div style="font-size:50px;font-weight:900;color:#fff;margin:12px 0;" id="gameoverScore">0</div>
+            <div style="color:var(--text2);font-weight:600;font-size:15px;">Toplam Puan</div>
+            <div style="display:flex;gap:12px;margin-top:24px;width:100%;max-width:300px;">
+                <button class="btn" style="flex:1;" onclick="restartSingleGame()">🔄 Tekrar</button>
+                <button class="btn outline" style="flex:1;color:#fff;border-color:rgba(255,255,255,0.5);" onclick="goToMenuFromGameover()">🏠 Menü</button>
+            </div>
+        </div>
+
+        <div class="screen active" id="login">
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;">
+                <div class="icon" style="font-size:70px;margin-bottom:12px;animation: pulseIcon 1.5s infinite alternate;">🎧</div>
+                <h1 style="color:var(--accent);margin-bottom:10px;font-weight:900;letter-spacing:1px;font-size:26px;">Music Quiz PRO</h1>
+                <p style="color:var(--text2);margin-bottom:20px;font-weight:500;font-size:15px;">Müzik bilgini test et, arkadaşlarınla yarış!</p>
+                
+                <div id="loginView" class="auth-view active">
+                    <div class="form-card">
+                        <input class="input" id="loginEmail" type="email" placeholder="E-posta Adresi">
+                        <input class="input" id="loginPass" type="password" placeholder="Şifre">
+                        <button class="btn" onclick="loginWithEmail()">Giriş Yap</button>
+                    </div>
+                    <button class="btn outline" style="border:none; color:var(--accent); margin-bottom:10px;" onclick="toggleAuthMode('register')">Hesabın yok mu? Kayıt Ol</button>
+                </div>
+
+                <div id="registerView" class="auth-view">
+                    <div class="form-card">
+                        <input class="input" id="regEmail" type="email" placeholder="E-posta Adresi">
+                        <input class="input" id="regPass" type="password" placeholder="Şifre (En az 6 hane)">
+                        <button class="btn" style="background:var(--success)" onclick="registerWithEmail()">Kayıt Ol</button>
+                    </div>
+                    <button class="btn outline" style="border:none; color:var(--accent); margin-bottom:10px;" onclick="toggleAuthMode('login')">Zaten hesabın var mı? Giriş Yap</button>
+                </div>
+
+                <div style="display:flex; align-items:center; gap: 12px; width: 100%; margin: 16px 0;">
+                    <div style="flex:1; height:1px; background:var(--border);"></div>
+                    <span style="color:var(--text2); font-size: 13px; font-weight: 700;">VEYA</span>
+                    <div style="flex:1; height:1px; background:var(--border);"></div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
+                    <button class="btn outline" style="background: var(--card); border-color: var(--border);" onclick="loginWithGoogle()">
+                        <svg width="20" height="20" viewBox="0 0 48 48" style="margin-right: 8px;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                        Google ile Devam Et
+                    </button>
+                    <button class="btn outline" style="border-color: transparent;" onclick="loginAsGuest()">
+                        👤 Misafir Olarak Gir
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="screen" id="menu">
+            <div class="header">
+                <div class="logo">🎧 Music Quiz</div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button class="icon-btn" onclick="showScreen('profile')" title="Profil" id="headerAvatarBtn" style="font-size:22px;border-radius:50%;border:2px solid var(--border);">👤</button>
+                    <button class="icon-btn nav-toggle" onclick="toggleNavMenu(event)" title="Menü">
+                        ☰<span class="notif-dot" id="navNotif"></span>
+                    </button>
+                </div>
+                
+                <div class="nav-dropdown" id="navMenu">
+                    <button class="btn outline nav-btn" onclick="showScreen('friends')" id="navFriendsBtn">
+                        👫 Arkadaşlar <span class="notif-dot" id="friendNotif" style="position:relative;display:none;margin-left:5px;"></span>
+                    </button>
+                    <button class="btn outline nav-btn" onclick="showScreen('clan')" id="navClanBtn">🛡️ Klan</button>
+                    <button class="btn outline nav-btn" onclick="showScreen('market')" id="navMarketBtn">🛒 Market</button>
+                    <button class="btn outline nav-btn" onclick="showScreen('leaderboard')" id="navLbBtn">🏆 Sıralama</button>
+                    <button class="btn outline nav-btn" onclick="showScreen('settings')" id="navSetBtn">⚙️ Ayarlar</button>
+                </div>
+            </div>
+            
+            <div class="mode-cards">
+                <div class="mode-card" onclick="showScreen('singleplayer')">
+                    <div class="mode-emoji">🎮</div>
+                    <div class="mode-info"><span class="mode-name" id="uiSingle">Tek Oyuncu</span><span class="mode-desc" id="uiSingleDesc">Kendini test et, rekor kır</span></div>
+                </div>
+                <div class="mode-card" onclick="showScreen('multiplayer')">
+                    <div class="mode-emoji">👥</div>
+                    <div class="mode-info"><span class="mode-name" id="uiMulti">Çok Oyunculu</span><span class="mode-desc" id="uiMultiDesc">Arkadaşlarınla yarış</span></div>
+                </div>
+                <div class="mode-card" onclick="checkDailyGift()" style="border-color:var(--gold);background:rgba(245,166,35,0.03);">
+                    <div class="mode-emoji">🎁</div>
+                    <div class="mode-info"><span class="mode-name" id="uiDaily">Günlük Hediye</span><span class="mode-desc" id="dailyStatus">Hediyeni al!</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="screen" id="friends">
+            <div class="header"><div class="logo" id="headerFriends">👫 Arkadaşlar</div><button class="icon-btn" onclick="showScreen('menu')">✕</button></div>
+            <div class="tabs">
+                <div class="tab active" onclick="friendTab('list')">Listem</div>
+                <div class="tab" onclick="friendTab('req')">İstekler <span id="fReqCount" style="color:var(--error);font-weight:900;"></span></div>
+                <div class="tab" onclick="friendTab('search')">Kişi Ara</div>
+            </div>
+            <div id="fTabList" class="scroll-list" style="flex:1;"><p class="hint-text">Henüz arkadaşın yok.</p></div>
+            <div id="fTabReq" class="scroll-list" style="display:none;flex:1;"></div>
+            <div id="fTabSearch" style="display:none;flex:1;flex-direction:column;">
+                <div style="display:flex;gap:8px;margin-bottom:12px;">
+                    <input class="input" id="searchUserInp" placeholder="Oyuncu Adı..." maxlength="15" style="flex:1;">
+                    <button class="btn small" style="width:auto; padding: 0 20px;" onclick="searchUsers()">Ara</button>
+                </div>
+                <div id="searchRes" class="scroll-list" style="flex:1;"></div>
+            </div>
+        </div>
+
+        <div class="screen" id="profile">
+            <div class="header"><div class="logo">👤 Profil</div><button class="icon-btn" onclick="showScreen('menu')">✕</button></div>
+            <div style="text-align:center;flex-shrink:0;">
+                <div style="font-size:50px;margin-bottom:10px;cursor:pointer;background:var(--bg);width:86px;height:86px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;border:2px solid var(--border);transition:0.2s;" onclick="openAvatarSelector()" id="profileCurrentAvatar" title="Değiştirmek için tıkla">👤</div>
+                <p class="hint-text" style="margin-bottom:12px;">Değiştirmek için fotoğrafa tıkla</p>
+                <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:12px;">
+                    <input class="input" id="profileNickname" style="text-align:center;font-weight:800;font-size:18px;width:180px;padding:10px;" maxlength="15">
+                    <span id="profileCurrentBadge" class="equipped-badge"></span>
+                </div>
+                <button class="btn small" onclick="saveNickname()" style="margin-bottom:16px; width:auto; padding: 10px 24px; margin-left:auto; margin-right:auto;">Adı Kaydet</button>
+                <div class="badge" style="display:inline-block;font-size:15px;padding:8px 16px;" id="profileLevel">Level 1</div>
+                <div class="xp-bar" style="margin:14px 0;width:80%;margin-left:auto;margin-right:auto; height:10px;"><div class="xp-fill" id="profileXpBar" style="width:0%;"></div></div>
+                <small style="color:var(--text2); font-weight:600; font-size:13px;" id="profileXpText">0 / 100 XP</small>
+            </div>
+            <div style="display:flex;gap:12px;margin:16px 0;flex-shrink:0;">
+                <div class="stat">⭐ <span id="profileScore">0</span></div>
+                <div class="stat">🪙 <span id="profileGold">0</span></div>
+            </div>
+            <div class="tabs">
+                <div class="tab active" onclick="profileTab('istatistik')">İstatistikler</div>
+                <div class="tab" onclick="profileTab('basarimlar')">Başarımlar</div>
+            </div>
+            <div class="scroll-list" id="pTabIstatistik" style="flex:1;">
+                <div class="list-item"><span style="font-weight:700;">Toplam Doğru</span><span style="margin-left:auto;font-weight:900;color:var(--success);" id="totalCorrect">0</span></div>
+                <div class="list-item"><span style="font-weight:700;">Toplam Yanlış</span><span style="margin-left:auto;font-weight:900;color:var(--error);" id="totalWrong">0</span></div>
+                <div class="list-item"><span style="font-weight:700;">Jokerler</span><span style="margin-left:auto;font-weight:700;" id="profileJokers">⚖️0 ⏳0 ⏭️0 ⏱️0</span></div>
+            </div>
+            <div class="scroll-list" id="pTabBasarimlar" style="display:none;flex:1;text-align:center;">
+                <div id="achievementsList"></div>
+            </div>
+        </div>
+
+        <div class="screen" id="clan">
+            <div class="header"><div class="logo" id="headerClan">🛡️ Klan</div><button class="icon-btn" onclick="showScreen('menu')">✕</button></div>
+            <div id="clanNotJoined" style="flex:1;display:flex;flex-direction:column;">
+                <div class="tabs">
+                    <div class="tab active" onclick="clanTab('create')">🏠 Klan Kur</div>
+                    <div class="tab" onclick="clanTab('join')">🔍 Katıl</div>
+                </div>
+                <div id="clanCreateTab" style="display:flex; flex-direction:column; gap:12px;">
+                    <input class="input" id="clanName" placeholder="Klan adı" maxlength="20">
+                    <input class="input" id="clanDesc" placeholder="Açıklama (opsiyonel)" maxlength="40">
+                    <button class="btn" onclick="createClan()">Klan Kur (100 🪙)</button>
+                </div>
+                <div id="clanJoinTab" style="display:none;flex:1;flex-direction:column; gap:12px;">
+                    <button class="btn small" onclick="searchClans()">🔄 Açık Klanları Listele</button>
+                    <div class="scroll-list" id="clanList" style="flex:1;"><p class="hint-text">Listelemek için butona bas</p></div>
+                </div>
+            </div>
+            <div id="clanJoined" style="display:none;flex:1;flex-direction:column;">
+                <div style="background:var(--accent-grad);padding:20px;border-radius:20px;color:#fff;text-align:center;margin-bottom:14px;flex-shrink:0;">
+                    <div style="font-size:30px;font-weight:900;" id="myClanName">-</div>
+                    <div style="font-size:14px;opacity:0.9; margin-top:4px;" id="myClanDesc">-</div>
+                    <div style="font-size:15px;font-weight:800;margin-top:8px;background:rgba(0,0,0,0.2);display:inline-block;padding:6px 16px;border-radius:14px;">🏆 Klan Puanı: <span id="myClanScore">0</span></div>
+                </div>
+                <div style="display:flex;gap:12px;margin-bottom:12px;flex-shrink:0;">
+                    <button class="btn small outline" onclick="leaveClan()" style="flex:1;">Ayrıl</button>
+                    <button class="btn small gold" onclick="clanWar()" style="flex:1;" id="clanWarBtn">⚔️ Savaş</button>
+                </div>
+                <h5 style="font-size:14px;margin-bottom:8px;">Üyeler</h5>
+                <div class="scroll-list" id="clanMembers" style="max-height:120px;min-height:40px;"></div>
+                <h5 style="font-size:14px;margin:12px 0 8px;">Klan Sohbeti</h5>
+                <div class="chat-box" style="flex:1;min-height:120px;">
+                    <div class="chat-messages" id="clanChatMessages"></div>
+                    <div class="chat-input-row">
+                        <input class="chat-input" id="clanChatInput" placeholder="Mesaj..." maxlength="100">
+                        <button class="chat-send" onclick="sendClanChat()">➤</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="screen" id="singleplayer">
+            <div class="header"><div class="logo" id="headerSingle">🎮 Tek Oyuncu</div><button class="icon-btn" onclick="showScreen('menu')">✕</button></div>
+            <p class="hint-text">Zorluk Seçimi</p>
+            <div class="difficulty-row">
+                <button class="btn small" id="diffEasy" onclick="setDifficulty('easy')">🟢 Kolay</button>
+                <button class="btn small" id="diffNormal" onclick="setDifficulty('normal')">🟡 Normal</button>
+                <button class="btn small outline" id="diffHard" onclick="setDifficulty('hard')">🔴 Zor</button>
+            </div>
+            <p class="hint-text" style="margin-top:14px;">1-3 kategori seç veya Tümü yap</p>
+            <div class="cats" id="categories"></div>
+            <button class="btn" style="margin-top:16px;font-size:16px;padding:16px;" id="btnSingleStart" onclick="startSingleGame()">OYUNA BAŞLA</button>
+        </div>
+
+        <div class="screen" id="multiplayer">
+            <div class="header"><div class="logo" id="headerMulti">👥 Çok Oyunculu</div><button class="icon-btn" onclick="showScreen('menu')">✕</button></div>
+            <div class="tabs">
+                <div class="tab active" onclick="showMultiTab('create')">🏠 Kur</div>
+                <div class="tab" onclick="showMultiTab('join')">🚪 Katıl</div>
+                <div class="tab" onclick="showMultiTab('search')">🔍 Ara</div>
+                <div class="tab" onclick="showMultiTab('1v1')">⚡ 1v1</div>
+            </div>
+            <div id="tabCreate" style="display:flex; flex-direction:column; gap:16px; align-items:center;">
+                <div class="form-card" style="margin-bottom:0;">
+                    <input class="input" id="nicknameCreate" placeholder="Takma adın" maxlength="15" disabled style="text-align:center;">
+                    <p class="hint-text" style="margin-bottom:0;margin-top:4px;">Kategoriler (Max 3 veya Tümü)</p>
+                    <div class="multi-cats" id="multiCatsCreate"></div>
+                </div>
+                <button class="btn" style="font-size:16px; padding:16px;" id="btnMultiCreate" onclick="createRoom()">Oda Oluştur</button>
+            </div>
+            <div id="tabJoin" style="display:none; flex-direction:column; gap:16px; align-items:center;">
+                <div class="form-card" style="margin-bottom:0;">
+                    <input class="input" id="nicknameJoin" placeholder="Takma adın" maxlength="15" disabled style="text-align:center;">
+                    <input class="input center" id="roomCode" placeholder="ODA KODU" maxlength="6" style="margin-top:8px; text-align:center; letter-spacing:8px; font-weight:900; font-size:20px;">
+                </div>
+                <button class="btn" style="font-size:16px; padding:16px;" id="btnMultiJoin" onclick="joinRoom()">Odaya Katıl</button>
+            </div>
+            <div id="tabSearch" style="display:none;flex:1;flex-direction:column;">
+                <div style="display:flex;align-items:center;gap:12px;margin:12px 0;">
+                    <span style="font-weight:800;font-size:15px;flex:1;">🔍 Açık Odalar</span>
+                    <button class="icon-btn" style="width:36px;height:36px;font-size:16px;" onclick="searchRooms()">🔄</button>
+                </div>
+                <div class="scroll-list" id="roomList" style="flex:1;"><p class="hint-text">🔄 ile ara</p></div>
+            </div>
+            <div id="tab1v1" style="display:none;flex:1;flex-direction:column;justify-content:center;align-items:center;">
+                <div class="mode-emoji" style="width:90px;height:90px;font-size:46px;margin-bottom:16px;">⚡</div>
+                <h3 style="margin-bottom:12px; font-size:22px;">1v1 Hızlı Eşleşme</h3>
+                <p class="hint-text" style="margin-bottom:24px; font-size:14px;">Rastgele bir rakiple hemen kapış!</p>
+                <button class="btn" style="font-size:16px;padding:16px;" id="btn1v1" onclick="start1v1()">Eşleşme Bul</button>
+                <div id="1v1Status" style="margin-top:20px;font-weight:bold;color:var(--gold);display:none; font-size:15px;">Rakip aranıyor...</div>
+            </div>
+        </div>
+
+        <div class="screen" id="lobby">
+            <div class="lobby-header">
+                <p style="font-size:14px;opacity:0.9;">Katılım Kodu</p>
+                <div class="room-code" id="lobbyCode">------</div>
+                <p style="font-size:12px;opacity:0.8;">Arkadaşlarınla paylaş</p>
+            </div>
+            <h5 style="margin:8px 0;font-size:15px;">Oyuncular (<span id="playerCount">0</span>/4)</h5>
+            <div class="player-list" id="playerList"></div>
+            <div class="chat-box" style="flex:1;margin-top:12px;">
+                <div class="chat-messages" id="chatMessages"></div>
+                <div class="chat-input-row">
+                    <input class="chat-input" id="chatInput" placeholder="Mesaj yaz..." maxlength="100">
+                    <button class="chat-send" onclick="sendChat()">➤</button>
+                </div>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:16px;">
+                <button class="btn outline" style="flex:0.5;padding:16px 0;" onclick="leaveRoom()">Çık</button>
+                <button class="btn" id="btnReady" style="flex:1;padding:16px 0;" onclick="handleReadyClick()">Hazırım</button>
+            </div>
+            <p class="hint-text" id="readyHint" style="margin-top:12px;">Herkes hazır olunca oyun başlar</p>
+        </div>
+
+        <div class="screen" id="game">
+            <div class="game-stats">
+                <div class="stat score-stat">⭐ <span id="scoreBadge">0</span></div>
+                <div class="stat gold-stat">🪙 <span id="goldBadge">0</span></div>
+                <button class="btn-close-game" onclick="quitGame()">✕</button>
+            </div>
+            <div class="disc-wrapper" id="discWrapper"><div class="disc" id="disc"><img id="albumArt" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23222' width='100' height='100'/><text x='50' y='55' text-anchor='middle' fill='white' font-size='20'>🎵</text></svg>" alt="Album"></div></div>
+            <div class="play-controls">
+                <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
+                <div class="now-playing" id="nowPlaying">🎵 Bekleniyor...</div>
+                <button class="btn small outline" style="padding:6px 16px;font-size:11px;margin-top:4px;" onclick="restartTrack()">↺ Başa Sar</button>
+            </div>
+            <div class="progress"><div class="bar" id="progressBar"></div></div>
+            <div class="timer" id="timerText">⏱ 15</div>
+            <div class="jokers" id="jokerArea"></div>
+            <div id="gameContent" style="flex:1;display:flex;flex-direction:column;min-height:0;"></div>
+            <div id="miniLB" style="display:none;flex-direction:column;gap:6px;padding:12px;background:var(--bg);border-radius:18px;border:1px solid var(--border);flex-shrink:0;max-height:120px;overflow-y:auto;"></div>
+        </div>
+
+        <div class="screen" id="market">
+            <div class="header"><div class="logo" id="headerMarket">🛒 Market</div><button class="icon-btn" onclick="showScreen('menu')">✕</button></div>
+            <div style="background:var(--gold-grad);padding:20px;border-radius:24px;color:#fff;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-shrink:0;box-shadow:0 10px 20px -5px rgba(245,166,35,0.4);">
+                <span style="font-weight:800;font-size:16px;">Bakiye</span><span style="font-weight:900;font-size:24px;" id="marketGold">0 🪙</span>
+            </div>
+            <div class="scroll-list" id="marketItems" style="flex:1;"></div>
+        </div>
+
+        <div class="screen" id="leaderboard">
+            <div class="header"><div class="logo" id="headerLb">🏆 Sıralama</div><button class="icon-btn" onclick="showScreen('menu')">✕</button></div>
+            <div class="scroll-list" id="lbList" style="flex:1;"></div>
+        </div>
+
+        <div class="screen" id="settings">
+            <div class="header"><div class="logo" id="headerSettings">⚙️ Ayarlar</div><button class="icon-btn" onclick="showScreen('menu')">✕</button></div>
+            
+            <div class="list-item">
+                <span style="font-weight:700;flex:1;">🌍 Oyun Dili</span>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn small" id="setLangTR" style="width:auto;padding:8px 16px;" onclick="setLangGlobal('tr')">🇹🇷 TR</button>
+                    <button class="btn small outline" id="setLangEN" style="width:auto;padding:8px 16px;" onclick="setLangGlobal('en')">🇬🇧 EN</button>
+                </div>
+            </div>
+            <div class="list-item"><span style="font-weight:700;flex:1;" id="txtDark">🌙 Karanlık Mod</span><button class="btn small" style="width:auto;padding:8px 16px;" id="darkToggle" onclick="toggleDark()">KAPALI</button></div>
+            <div class="list-item"><span style="font-weight:700;flex:1;" id="txtSound">🔊 Ses Efektleri</span><button class="btn small" style="width:auto;padding:8px 16px;" id="sfxToggle" onclick="toggleSFX()">AÇIK</button></div>
+            <div class="list-item"><span style="font-weight:700;flex:1;" id="txtLogout">🚪 Çıkış Yap</span><button class="btn small outline" style="width:auto;padding:8px 16px;border-color:var(--error);color:var(--error);" onclick="logout()">Çıkış</button></div>
+        </div>
+    </div>
+
+    <script>
+        firebase.initializeApp({
+            apiKey: "AIzaSyAQUBRabmCmdjufwEM2lNlXMQL0kOgdPpo",
+            authDomain: "musicquiz-c6a6b.firebaseapp.com",
+            databaseURL: "https://musicquiz-c6a6b-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "musicquiz-c6a6b",
+            storageBucket: "musicquiz-c6a6b.firebasestorage.app",
+            messagingSenderId: "417778631382",
+            appId: "1:417778631382:web:f2a6dc453c78faeca93f77"
+        });
+        const db = firebase.database();
+        const auth = firebase.auth();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+        let currentUser = null; 
+
+        let lang = 'tr', selectedCats = [], multiCats = [], score = 0, gold = 500, gameActive = !1,
+            allTracks = [], usedTracks = new Set(), currentTrack = null, currentTrackIndex = 0, timerInterval = null,
+            timeLeft = 15, timerFrozen = !1, sfxOn = !0, darkOn = !1, isPlaying = !1,
+            jokersOwned = { fifty: 3, freeze: 2, skip: 2, time: 2 }, isMultiplayer = !1,
+            nickname = '', roomId = '', playerId = '', isReady = !1, players = {},
+            chatListener = null, playerListener = null, statusListener = null, roomListener = null,
+            TARGET = 1000, difficulty = 'normal', singleGameActive = !1, xp = 0, level = 1,
+            totalCorrectAnswers = 0, totalWrongAnswers = 0, clanId = null, clanListener = null,
+            clanChatListener = null, isSearching1v1 = !1, unlockedAchievements = [],
+            userAvatar = '👤', equippedBadge = '', correctStreak = 0;
+        
+        const XP_PER_LEVEL = 100;
+        const audio = new Audio();
+        let audioCtx = null; 
+        const TIMEOUT = 3600000;
+        const AVATAR_OPTIONS = ['👤', '👨‍🎤', '👩‍🎤', '🎸', '🎹', '🎧', '👾', '👽', '😎', '🤖', '🦊', '🐱'];
+
+        const langDict = {
+            tr: {
+                single: "Tek Oyuncu", singleDesc: "Kendini test et, rekor kır",
+                multi: "Çok Oyunculu", multiDesc: "Arkadaşlarınla yarış",
+                daily: "Günlük Hediye", friends: "Arkadaşlar", clan: "Klan",
+                market: "Market", lb: "Sıralama", settings: "Ayarlar",
+                start: "OYUNA BAŞLA", createRoom: "Oda Oluştur", joinRoom: "Odaya Katıl",
+                searchMatch: "Eşleşme Bul", dark: "Karanlık Mod", sound: "Ses Efektleri", logout: "Çıkış Yap"
+            },
+            en: {
+                single: "Singleplayer", singleDesc: "Test yourself, break records",
+                multi: "Multiplayer", multiDesc: "Compete with friends",
+                daily: "Daily Gift", friends: "Friends", clan: "Clan",
+                market: "Store", lb: "Leaderboard", settings: "Settings",
+                start: "START GAME", createRoom: "Create Room", joinRoom: "Join Room",
+                searchMatch: "Find Match", dark: "Dark Mode", sound: "Sound Effects", logout: "Logout"
+            }
+        };
+        
+        const MY_ACHIEVEMENTS = [
+            { id: 'first_blood', icon: '🎯', name: 'İlk Kan', desc: 'İlk soruyu doğru bil.', req: () => totalCorrectAnswers >= 1, reward: 50 },
+            { id: 'smart', icon: '🧠', name: 'Müzik Dehası', desc: '50 soru doğru bil.', req: () => totalCorrectAnswers >= 50, reward: 200 },
+            { id: 'veteran', icon: '🔥', name: 'Müzik Kurdu', desc: '100 soru doğru bil.', req: () => totalCorrectAnswers >= 100, reward: 500 },
+            { id: 'rich', icon: '💰', name: 'Zengin', desc: '2000 altına ulaş.', req: () => gold >= 2000, reward: 300 },
+            { id: 'level5', icon: '⭐', name: 'Yükselen Yıldız', desc: '5. Seviyeye ulaş.', req: () => level >= 5, reward: 400 }
+        ];
+
+        const catsData = {
+            tr: [ { id: 'all_tr', emoji: '🎵', label: 'TÜMÜ' }, { id: 'pop_tr', emoji: '🎤', label: 'POP' }, { id: 'rock_tr', emoji: '🎸', label: 'ROCK' }, { id: 'rap_tr', emoji: '🎧', label: 'RAP' }, { id: 'turku', emoji: '🪕', label: 'TÜRKÜ' }, { id: '80_tr', emoji: '🕺', label: '80LER' }, { id: '90_tr', emoji: '📻', label: '90LAR' }, { id: '2000_tr', emoji: '💿', label: '2000LER' }, { id: 'arabesk', emoji: '🎻', label: 'ARABESK' }, { id: 'yabanci', emoji: '🌍', label: 'YABANCI' } ],
+            en: [ { id: 'all_en', emoji: '🎵', label: 'ALL' }, { id: 'pop_en', emoji: '🌟', label: 'POP' }, { id: 'rock_en', emoji: '🤘', label: 'ROCK' }, { id: 'rap_en', emoji: '🎤', label: 'RAP' }, { id: '80_en', emoji: '💃', label: '80S' }, { id: '90_en', emoji: '📀', label: '90S' }, { id: '2000_en', emoji: '💎', label: '2000S' }, { id: '2010_en', emoji: '🔮', label: '2010S' }, { id: 'rnb', emoji: '🎶', label: 'R&B' }, { id: 'latin', emoji: '💃', label: 'LATIN' } ]
+        };
+
+        const categoryKeywords = {
+            tr: { pop_tr: ['Tarkan', 'Sezen Aksu', 'Nilüfer', 'Hande Yener', 'Gülşen', 'Edis'], rock_tr: ['Duman', 'Mor ve Ötesi', 'Athena', 'Teoman'], rap_tr: ['Ceza', 'Sagopa Kajmer', 'Ezhel', 'Ben Fero'], turku: ['Neşet Ertaş', 'Aşık Veysel', 'Musa Eroğlu', 'Arif Sağ', 'Bedia Akartürk'], '80_tr': ['Ajda Pekkan', 'Barış Manço', 'Cem Karaca', 'Zeki Müren'], '90_tr': ['Yonca Evcimik', 'Mustafa Sandal', 'Tarkan', 'Sertab Erener'], '2000_tr': ['Hande Yener', 'Demet Akalın', 'Yalın', 'Kenan Doğulu'], arabesk: ['Müslüm Gürses', 'İbrahim Tatlıses', 'Ferdi Tayfur', 'Orhan Gencebay'], yabanci: ['Dua Lipa', 'The Weeknd', 'Taylor Swift', 'Eminem', 'Coldplay'] },
+            en: { pop_en: ['Taylor Swift', 'Ed Sheeran', 'Ariana Grande'], rock_en: ['Queen', 'The Beatles', 'AC/DC'], rap_en: ['Eminem', 'Drake', 'Kanye West'], '80_en': ['Michael Jackson', 'Madonna', 'Prince'], '90_en': ['Nirvana', 'Pearl Jam', 'Tupac'], '2000_en': ['Eminem', 'Coldplay', 'Beyonce'], '2010_en': ['Adele', 'Drake', 'Taylor Swift'], rnb: ['Beyonce', 'Usher', 'Alicia Keys'], latin: ['Shakira', 'Bad Bunny', 'J Balvin'] }
+        };
+
+        const demoDB = {
+            tr: {
+                pop_tr: [
+                    { a: 'Tarkan', s: ['Şımarık', 'Kuzu Kuzu', 'Dudu', 'Yolla', 'Öp'] },
+                    { a: 'Sezen Aksu', s: ['Vazgeçtim', 'Gülümse', 'Şinanay', 'Firuze', 'Sen Ağlama'] },
+                    { a: 'Edis', s: ['Martılar', 'Çok Çok', 'Yalan', 'Benim Ol'] }
+                ],
+                rock_tr: [
+                    { a: 'Duman', s: ['Senden Daha Güzel', 'Beni Yak', 'Aman Aman', 'Her Şeyi Yak'] },
+                    { a: 'Mor ve Ötesi', s: ['Cambaz', 'Bir Derdim Var', 'Araf', 'Oyunbozan'] }
+                ],
+                rap_tr: [
+                    { a: 'Ceza', s: ['Suspus', 'Yerli Plaka', 'Fark Var', 'Neyim Var Ki'] },
+                    { a: 'Sagopa Kajmer', s: ['Galiba', 'Baytar', 'Ateşten Gömlek'] }
+                ],
+                turku: [
+                    { a: 'Neşet Ertaş', s: ['Yalan Dünya', 'Zülüf Dökülmüş Yüze', 'Neredesin Sen', 'Ah Yalan Dünya'] },
+                    { a: 'Aşık Veysel', s: ['Uzun İnce Bir Yoldayım', 'Kara Toprak', 'Güzelliğin On Para Etmez'] },
+                    { a: 'Musa Eroğlu', s: ['Mihriban', 'Yolun Sonu Görünüyor', 'Halil İbrahim'] }
+                ],
+                '80_tr': [
+                    { a: 'Barış Manço', s: ['Gülpembe', 'Dönence', 'Sarı Çizmeli Mehmet Ağa'] },
+                    { a: 'Cem Karaca', s: ['Tamirci Çırağı', 'Resimdeki Gözyaşları', 'Islak Islak'] }
+                ],
+                '90_tr': [
+                    { a: 'Mustafa Sandal', s: ['Araba', 'Onun Arabası Var', 'İsyankar'] },
+                    { a: 'Yonca Evcimik', s: ['Abone', 'Kendine Gel', 'Bandıra Bandıra'] }
+                ],
+                '2000_tr': [
+                    { a: 'Hande Yener', s: ['Kırmızı', 'Romeo', 'Kibir'] },
+                    { a: 'Kenan Doğulu', s: ['Çakkıdı', 'Baş Harfi Ben', 'Tutamıyorum Zamanı'] }
+                ],
+                arabesk: [
+                    { a: 'Müslüm Gürses', s: ['Nilüfer', 'Affet', 'Seni Yazdım', 'Paramparça'] },
+                    { a: 'İbrahim Tatlıses', s: ['Mavi Mavi', 'Aramam', 'Mutlu Ol Yeter', 'Haydi Söyle'] }
+                ],
+                yabanci: [
+                    { a: 'Dua Lipa', s: ['Levitating', 'Don\'t Start Now', 'New Rules'] },
+                    { a: 'The Weeknd', s: ['Blinding Lights', 'Starboy', 'Save Your Tears'] }
+                ]
+            },
+            en: {
+                pop_en: [
+                    { a: 'Taylor Swift', s: ['Shake It Off', 'Blank Space', 'Cruel Summer', 'Love Story'] },
+                    { a: 'Ed Sheeran', s: ['Shape of You', 'Perfect', 'Bad Habits', 'Photograph'] }
+                ],
+                rock_en: [
+                    { a: 'Queen', s: ['Bohemian Rhapsody', 'We Will Rock You', 'Don\'t Stop Me Now'] },
+                    { a: 'AC/DC', s: ['Back In Black', 'Thunderstruck', 'Highway to Hell'] }
+                ],
+                rap_en: [
+                    { a: 'Eminem', s: ['Lose Yourself', 'Without Me', 'The Real Slim Shady'] }
+                ],
+                '80_en': [ { a: 'Michael Jackson', s: ['Billie Jean', 'Thriller', 'Beat It'] } ],
+                '90_en': [ { a: 'Nirvana', s: ['Smells Like Teen Spirit', 'Come As You Are', 'Lithium'] } ],
+                '2000_en': [ { a: 'Coldplay', s: ['Yellow', 'Clocks', 'Viva La Vida'] } ],
+                '2010_en': [ { a: 'Adele', s: ['Rolling in the Deep', 'Someone Like You', 'Hello'] } ],
+                rnb: [ { a: 'Beyonce', s: ['Halo', 'Crazy in Love', 'Single Ladies'] } ],
+                latin: [ { a: 'Shakira', s: ['Hips Don\'t Lie', 'Waka Waka', 'Whenever, Wherever'] } ]
+            }
+        };
+
+        function toggleAuthMode(mode) {
+            document.querySelectorAll('.auth-view').forEach(el => el.classList.remove('active'));
+            if(mode === 'login') {
+                document.getElementById('loginView').classList.add('active');
+            } else {
+                document.getElementById('registerView').classList.add('active');
+            }
+        }
+
+        function updateLanguageTexts() {
+            const t = langDict[lang];
+            if(!t) return;
+            
+            document.getElementById('uiSingle').textContent = t.single;
+            document.getElementById('uiSingleDesc').textContent = t.singleDesc;
+            document.getElementById('uiMulti').textContent = t.multi;
+            document.getElementById('uiMultiDesc').textContent = t.multiDesc;
+            document.getElementById('uiDaily').textContent = t.daily;
+            
+            document.getElementById('navFriendsBtn').innerHTML = `👫 ${t.friends} <span class="notif-dot" id="friendNotif" style="position:relative;display:none;margin-left:5px;"></span>`;
+            document.getElementById('navClanBtn').textContent = `🛡️ ${t.clan}`;
+            document.getElementById('navMarketBtn').textContent = `🛒 ${t.market}`;
+            document.getElementById('navLbBtn').textContent = `🏆 ${t.lb}`;
+            document.getElementById('navSetBtn').textContent = `⚙️ ${t.settings}`;
+            
+            document.getElementById('headerSingle').innerHTML = `🎮 ${t.single}`;
+            document.getElementById('headerMulti').innerHTML = `👥 ${t.multi}`;
+            document.getElementById('headerFriends').innerHTML = `👫 ${t.friends}`;
+            document.getElementById('headerClan').innerHTML = `🛡️ ${t.clan}`;
+            document.getElementById('headerMarket').innerHTML = `🛒 ${t.market}`;
+            document.getElementById('headerLb').innerHTML = `🏆 ${t.lb}`;
+            document.getElementById('headerSettings').innerHTML = `⚙️ ${t.settings}`;
+            
+            document.getElementById('btnSingleStart').textContent = t.start;
+            document.getElementById('btnMultiCreate').textContent = t.createRoom;
+            document.getElementById('btnMultiJoin').textContent = t.joinRoom;
+            document.getElementById('btn1v1').textContent = t.searchMatch;
+            
+            document.getElementById('txtDark').innerHTML = `🌙 ${t.dark}`;
+            document.getElementById('txtSound').innerHTML = `🔊 ${t.sound}`;
+            document.getElementById('txtLogout').innerHTML = `🚪 ${t.logout}`;
+        }
+
+        function toggleNavMenu(event) {
+            if(event) event.stopPropagation();
+            const nav = document.getElementById('navMenu');
+            const isNavActive = nav.classList.contains('active');
+            nav.classList.toggle('active', !isNavActive);
+        }
+
+        function closeNavMenu(event) {
+            const nav = document.getElementById('navMenu');
+            if (nav && nav.classList.contains('active') && !event.target.closest('.nav-dropdown') && !event.target.closest('.nav-toggle')) {
+                nav.classList.remove('active');
+            }
+        }
+
+        function stopMusic() {
+            if(audio) {
+                audio.pause();
+                audio.removeAttribute('src'); 
+                audio.load();
+            }
+            isPlaying = !1;
+            const playBtn = document.getElementById('playBtn');
+            if(playBtn) {
+                playBtn.textContent = '▶';
+                playBtn.classList.remove('is-playing');
+            }
+            const disc = document.getElementById('disc');
+            const discWrapper = document.getElementById('discWrapper');
+            if(disc) disc.classList.remove('playing');
+            if(discWrapper) discWrapper.classList.remove('playing');
+        }
+
+        window.onload = () => {
+            setTimeout(() => { const i = document.getElementById('intro'); if (i) i.style.display = 'none'; }, 3500);
+            
+            const grid = document.getElementById('avatarGridContainer');
+            if(grid) {
+                grid.innerHTML = AVATAR_OPTIONS.map(a => `<div class="avatar-option" onclick="selectAvatar('${a}')">${a}</div>`).join('');
+            }
+
+            audio.addEventListener('timeupdate', () => { 
+                if (audio.duration && isFinite(audio.duration)) 
+                    document.getElementById('progressBar').style.width = Math.min((audio.currentTime / audio.duration) * 100, 100) + '%'; 
+            });
+            audio.addEventListener('playing', () => { 
+                document.getElementById('disc').classList.add('playing');
+                document.getElementById('discWrapper').classList.add('playing');
+                document.getElementById('playBtn').textContent = '⏸'; document.getElementById('playBtn').classList.add('is-playing');
+                isPlaying = !0; document.getElementById('nowPlaying').textContent = '🎵 Çalıyor...'; 
+            });
+            audio.addEventListener('pause', () => { 
+                document.getElementById('disc').classList.remove('playing');
+                document.getElementById('discWrapper').classList.remove('playing');
+                document.getElementById('playBtn').textContent = '▶'; document.getElementById('playBtn').classList.remove('is-playing');
+                isPlaying = !1; 
+            });
+            audio.addEventListener('ended', () => { 
+                document.getElementById('disc').classList.remove('playing');
+                document.getElementById('discWrapper').classList.remove('playing');
+                document.getElementById('playBtn').textContent = '▶'; document.getElementById('playBtn').classList.remove('is-playing');
+                isPlaying = !1; 
+            });
+            
+            document.getElementById('chatInput')?.addEventListener('keypress', e => { if (e.key === 'Enter') sendChat(); });
+            document.getElementById('clanChatInput')?.addEventListener('keypress', e => { if (e.key === 'Enter') sendClanChat(); });
+
+            document.getElementById('loginPass')?.addEventListener('keypress', e => { if (e.key === 'Enter') loginWithEmail(); });
+            document.getElementById('regPass')?.addEventListener('keypress', e => { if (e.key === 'Enter') registerWithEmail(); });
+
+            document.body.addEventListener('click', (e) => {
+                if (e.target.closest('button') || e.target.closest('.tab') || e.target.closest('.cat') || e.target.closest('.multi-cat') || e.target.closest('.mode-card')) {
+                    playBeep(350, 0.03, 'sine');
+                }
+            });
+
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    document.getElementById('loader').classList.add('active');
+                    currentUser = user; playerId = user.uid;
+                    fetchUserData(user);
+                } else {
+                    const guestUid = localStorage.getItem('mq_guest_uid');
+                    if(guestUid) {
+                        const guestUser = { uid: guestUid, displayName: 'Misafir' };
+                        currentUser = guestUser; playerId = guestUser.uid;
+                        loadLocalFallback(guestUser);
+                        initAppAfterAuth();
+                    } else {
+                        currentUser = null;
+                        document.getElementById('loader').classList.remove('active');
+                        showScreen('login');
+                    }
+                }
+            });
+        };
+
+        function getAuthErrorMsg(code) {
+            switch(code) {
+                case 'auth/email-already-in-use': return 'Bu e-posta zaten kullanımda.';
+                case 'auth/invalid-email': return 'Geçersiz e-posta formatı.';
+                case 'auth/weak-password': return 'Şifre çok zayıf (en az 6 hane).';
+                case 'auth/user-not-found':
+                case 'auth/wrong-password':
+                case 'auth/invalid-credential': return 'E-posta veya şifre hatalı.'; 
+                case 'auth/operation-not-allowed': return 'HATA: Firebase Console\'dan E-posta girişini aktifleştirmelisiniz!';
+                default: return 'Bir hata oluştu (' + code + ')';
+            }
+        }
+
+        function loginWithEmail() {
+            const e = document.getElementById('loginEmail').value.trim();
+            const p = document.getElementById('loginPass').value;
+            if(!e || !p) return toast('Lütfen e-posta ve şifrenizi girin!');
+            document.getElementById('loader').classList.add('active');
+            auth.signInWithEmailAndPassword(e, p).then(() => {
+                // Başarılı giriş, onAuthStateChanged tetiklenecek
+            }).catch(err => {
+                document.getElementById('loader').classList.remove('active');
+                toast(getAuthErrorMsg(err.code));
+            });
+        }
+
+        function registerWithEmail() {
+            const e = document.getElementById('regEmail').value.trim();
+            const p = document.getElementById('regPass').value;
+            if(!e || !p) return toast('Lütfen e-posta ve şifrenizi girin!');
+            if(p.length < 6) return toast('Şifre en az 6 haneli olmalı!');
+            document.getElementById('loader').classList.add('active');
+            auth.createUserWithEmailAndPassword(e, p).catch(err => {
+                document.getElementById('loader').classList.remove('active');
+                toast(getAuthErrorMsg(err.code));
+            });
+        }
+
+        function loginWithGoogle() {
+            document.getElementById('loader').classList.add('active');
+            auth.signInWithPopup(googleProvider).catch(e => {
+                document.getElementById('loader').classList.remove('active');
+                toast("Giriş iptal edildi veya başarısız: " + e.message);
+            });
+        }
+
+        function loginAsGuest() {
+            document.getElementById('loader').classList.add('active');
+            const guestUid = localStorage.getItem('mq_guest_uid') || 'guest_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('mq_guest_uid', guestUid);
+            const guestUser = { uid: guestUid, displayName: 'Misafir' };
+            currentUser = guestUser; playerId = guestUser.uid;
+            
+            loadLocalFallback(guestUser);
+            initAppAfterAuth();
+        }
+
+        function logout() {
+            if(currentUser && currentUser.uid.startsWith('guest_')) {
+                currentUser = null;
+                localStorage.removeItem('mq_guest_uid');
+                showScreen('login');
+                toast("Çıkış yapıldı.");
+            } else {
+                auth.signOut().then(() => {
+                    toast("Çıkış yapıldı.");
+                }).catch(e => toast("Çıkış başarısız."));
+            }
+        }
+
+        function fetchUserData(user) {
+            db.ref('users/' + user.uid).once('value').then(snap => {
+                if (snap.exists()) {
+                    const data = snap.val();
+                    nickname = data.nickname || user.displayName || ("Oyuncu" + Math.floor(Math.random() * 1000));
+                    gold = data.gold !== undefined ? data.gold : 500;
+                    xp = data.xp || 0; level = data.level || 1;
+                    totalCorrectAnswers = data.totalCorrectAnswers || 0;
+                    totalWrongAnswers = data.totalWrongAnswers || 0;
+                    jokersOwned = data.jokersOwned || { fifty: 3, freeze: 2, skip: 2, time: 2 };
+                    clanId = data.clanId || null;
+                    unlockedAchievements = data.unlockedAchievements || [];
+                    userAvatar = data.avatar || '👤';
+                    equippedBadge = data.equippedBadge || '';
+                } else {
+                    nickname = user.displayName || ("Oyuncu" + Math.floor(Math.random() * 1000));
+                    db.ref('users/' + user.uid).set({
+                        nickname, gold: 500, xp: 0, level: 1, totalCorrectAnswers: 0, totalWrongAnswers: 0,
+                        jokersOwned: { fifty: 3, freeze: 2, skip: 2, time: 2 }, unlockedAchievements: [],
+                        avatar: '👤', equippedBadge: ''
+                    }).catch(e => console.error("Veritabanına yazılamadı"));
+                }
+                loadLocalSettings();
+                initAppAfterAuth();
+            }).catch(e => {
+                toast("Veritabanı ulaşılamıyor, Çevrimdışı/Yerel Mod!");
+                loadLocalFallback(user);
+                initAppAfterAuth();
+            });
+        }
+        
+        function loadLocalSettings() {
+            sfxOn = localStorage.getItem('mq_sfx') !== 'false';
+            darkOn = localStorage.getItem('mq_dark') === 'true';
+            if (darkOn) { document.getElementById('app').classList.add('dark'); document.body.classList.add('dark'); }
+            document.getElementById('darkToggle').textContent = darkOn ? 'AÇIK' : 'KAPALI';
+            document.getElementById('sfxToggle').textContent = sfxOn ? 'AÇIK' : 'KAPALI';
+            difficulty = localStorage.getItem('mq_difficulty') || 'normal';
+            
+            const savedLang = localStorage.getItem('mq_lang') || 'tr';
+            setLangGlobal(savedLang, false);
+        }
+
+        function loadLocalFallback(user) {
+            nickname = localStorage.getItem('mq_nickname') || user.displayName || ("Oyuncu" + Math.floor(Math.random()*1000));
+            gold = parseInt(localStorage.getItem('mq_gold') || '500');
+            xp = parseInt(localStorage.getItem('mq_xp') || '0');
+            level = parseInt(localStorage.getItem('mq_level') || '1');
+            totalCorrectAnswers = parseInt(localStorage.getItem('mq_correct') || '0');
+            totalWrongAnswers = parseInt(localStorage.getItem('mq_wrong') || '0');
+            unlockedAchievements = JSON.parse(localStorage.getItem('mq_ach') || '[]');
+            const j = localStorage.getItem('mq_jokers'); if (j) jokersOwned = JSON.parse(j);
+            clanId = localStorage.getItem('mq_clanId') || null;
+            userAvatar = localStorage.getItem('mq_avatar') || '👤';
+            equippedBadge = localStorage.getItem('mq_badge') || '';
+            loadLocalSettings();
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem('mq_sfx', sfxOn); localStorage.setItem('mq_dark', darkOn);
+                localStorage.setItem('mq_difficulty', difficulty); localStorage.setItem('mq_nickname', nickname);
+                localStorage.setItem('mq_gold', gold); localStorage.setItem('mq_xp', xp); localStorage.setItem('mq_level', level);
+                localStorage.setItem('mq_correct', totalCorrectAnswers); localStorage.setItem('mq_wrong', totalWrongAnswers);
+                localStorage.setItem('mq_jokers', JSON.stringify(jokersOwned)); localStorage.setItem('mq_ach', JSON.stringify(unlockedAchievements));
+                localStorage.setItem('mq_clanId', clanId || '');
+                localStorage.setItem('mq_avatar', userAvatar); localStorage.setItem('mq_badge', equippedBadge);
+                localStorage.setItem('mq_lang', lang);
+            } catch(e) {}
+            
+            if (currentUser && !currentUser.uid.startsWith('guest_')) {
+                db.ref('users/' + currentUser.uid).update({
+                    nickname, gold, xp, level, totalCorrectAnswers, totalWrongAnswers, jokersOwned, clanId, unlockedAchievements, avatar: userAvatar, equippedBadge
+                }).catch(e=>{});
+                
+                db.ref('usersByName/' + currentUser.uid).set({
+                    nickname: nickname, lowercase: nickname.toLowerCase(), avatar: userAvatar
+                }).catch(e=>{});
+            }
+            checkAchievements();
+        }
+
+        function initAppAfterAuth() {
+            document.getElementById('loader').classList.remove('active');
+            updateDifficultyButtons(); updateAllUI(); renderCats('categories'); renderMultiCats();
+            renderMarket(); renderLB(); updateProfileUI(); checkClanMembership(); updateDailyGiftUI();
+            listenFriendRequests();
+            updateLanguageTexts();
+            
+            document.getElementById('nicknameCreate').value = nickname;
+            document.getElementById('nicknameJoin').value = nickname;
+            document.getElementById('profileNickname').value = nickname;
+            
+            showScreen('menu');
+            cleanInactiveRooms();
+        }
+
+        function checkAchievements() {
+            let changed = false;
+            MY_ACHIEVEMENTS.forEach(a => {
+                if (!unlockedAchievements.includes(a.id) && a.req()) {
+                    unlockedAchievements.push(a.id);
+                    gold += a.reward; changed = true;
+                    toast(`🏆 Başarım Açıldı: ${a.name} (+${a.reward}🪙)`);
+                    playBeep(880, 0.2); playBeep(1100, 0.4);
+                }
+            });
+            if(changed) {
+                if(currentUser && !currentUser.uid.startsWith('guest_')) db.ref('users/' + currentUser.uid).update({ unlockedAchievements, gold }).catch(e=>{});
+                updateAllUI();
+            }
+        }
+        
+        function renderAchievements() {
+            const container = document.getElementById('achievementsList');
+            if(!container) return;
+            container.innerHTML = MY_ACHIEVEMENTS.map(a => {
+                const isUnlocked = unlockedAchievements.includes(a.id);
+                const isEquipped = equippedBadge === a.icon;
+                return `
+                <div class="list-item" style="opacity:${isUnlocked ? 1 : 0.6}; border-color:${isUnlocked ? 'var(--gold)' : 'var(--border)'}">
+                    <div style="font-size:30px; filter:${isUnlocked ? 'none' : 'grayscale(1)'}">${a.icon}</div>
+                    <div style="flex:1; text-align:left;">
+                        <b style="color:${isUnlocked ? 'var(--gold)' : 'var(--text)'}">${a.name}</b>
+                        <div style="font-size:11px; color:var(--text2);">${a.desc}</div>
+                    </div>
+                    ${isUnlocked ? 
+                        (isEquipped ? `<span style="color:var(--success); font-weight:800; font-size:12px;">✅ Kuşanıldı</span>` : `<button class="btn small outline" style="border-color:var(--gold);color:var(--gold);" onclick="equipBadge('${a.icon}')">Kuşan</button>`) 
+                        : `<span style="font-size:11px; font-weight:700;">+${a.reward}🪙</span>`}
+                </div>`;
+            }).join('');
+        }
+
+        function equipBadge(icon) {
+            equippedBadge = icon;
+            saveState();
+            updateProfileUI();
+            toast(`Rozet kuşanıldı: ${icon}`);
+        }
+
+        function openAvatarSelector() {
+            document.getElementById('avatarOverlay').classList.add('active');
+        }
+
+        function closeAvatarSelector() {
+            document.getElementById('avatarOverlay').classList.remove('active');
+        }
+
+        function selectAvatar(avatar) {
+            userAvatar = avatar;
+            saveState();
+            updateProfileUI();
+            closeAvatarSelector();
+            toast('Profil fotoğrafı güncellendi!');
+        }
+
+        function profileTab(tab) {
+            document.getElementById('pTabIstatistik').style.display = tab === 'istatistik' ? 'block' : 'none';
+            document.getElementById('pTabBasarimlar').style.display = tab === 'basarimlar' ? 'block' : 'none';
+            document.querySelectorAll('#profile .tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('#profile .tab')[tab === 'istatistik' ? 0 : 1].classList.add('active');
+            if(tab === 'basarimlar') renderAchievements();
+        }
+
+        function friendTab(tab) {
+            document.getElementById('fTabList').style.display = tab === 'list' ? 'block' : 'none';
+            document.getElementById('fTabReq').style.display = tab === 'req' ? 'block' : 'none';
+            document.getElementById('fTabSearch').style.display = tab === 'search' ? 'flex' : 'none';
+            document.querySelectorAll('#friends .tab').forEach(t => t.classList.remove('active'));
+            if(tab === 'list') { document.querySelectorAll('#friends .tab')[0].classList.add('active'); loadFriendsList(); }
+            if(tab === 'req') { document.querySelectorAll('#friends .tab')[1].classList.add('active'); }
+            if(tab === 'search') document.querySelectorAll('#friends .tab')[2].classList.add('active');
+        }
+
+        function searchUsers() {
+            const query = document.getElementById('searchUserInp').value.trim().toLowerCase();
+            if(!query) return;
+            if(!currentUser || currentUser.uid.startsWith('guest_')) return toast('Misafir modunda kullanılamaz.');
+            db.ref('usersByName').once('value').then(snap => {
+                const users = snap.val() || {};
+                const results = Object.entries(users).filter(([uid, u]) => (u.lowercase || '').includes(query) && uid !== currentUser.uid);
+                document.getElementById('searchRes').innerHTML = results.length ? results.map(([uid, u]) => `
+                    <div class="list-item">
+                        <span style="font-size:20px; margin-right:8px;">${u.avatar || '👤'}</span>
+                        <span style="font-weight:700;flex:1;">${u.nickname}</span>
+                        <button class="btn small" onclick="sendFriendReq('${uid}', '${u.nickname}')">Ekle</button>
+                    </div>
+                `).join('') : '<p class="hint-text">Kullanıcı bulunamadı.</p>';
+            }).catch(e => toast('Hata oluştu.'));
+        }
+
+        function sendFriendReq(targetUid, targetName) {
+            if(!currentUser || currentUser.uid.startsWith('guest_')) return;
+            db.ref(`users/${targetUid}/friendRequests/${currentUser.uid}`).set({ nickname: nickname, avatar: userAvatar, time: Date.now() }).then(() => {
+                toast(`✅ ${targetName} adlı kullanıcıya istek gönderildi.`);
+            }).catch(e => toast('İstek gönderilemedi.'));
+        }
+
+        function listenFriendRequests() {
+            if(!currentUser || currentUser.uid.startsWith('guest_')) return;
+            db.ref(`users/${currentUser.uid}/friendRequests`).on('value', snap => {
+                const reqs = snap.val() || {};
+                const count = Object.keys(reqs).length;
+                document.getElementById('fReqCount').textContent = count > 0 ? `(${count})` : '';
+                document.getElementById('friendNotif').style.display = count > 0 ? 'block' : 'none';
+                
+                const navFriendNotif = document.getElementById('friendNotif');
+                if(navFriendNotif) navFriendNotif.style.display = count > 0 ? 'inline-block' : 'none';
+
+                const reqTab = document.getElementById('fTabReq');
+                reqTab.innerHTML = count > 0 ? Object.entries(reqs).map(([uid, data]) => `
+                    <div class="list-item">
+                        <span style="font-size:20px; margin-right:8px;">${data.avatar || '👤'}</span>
+                        <span style="font-weight:700;flex:1;">${data.nickname}</span>
+                        <button class="btn small" style="background:var(--success);width:auto;" onclick="acceptFriend('${uid}', '${data.nickname}')">Kabul</button>
+                        <button class="btn small outline" style="margin-left:4px;border-color:var(--error);color:var(--error);width:auto;" onclick="rejectFriend('${uid}')">Red</button>
+                    </div>
+                `).join('') : '<p class="hint-text">Bekleyen istek yok.</p>';
+            });
+        }
+
+        function acceptFriend(uid, fName) {
+            db.ref(`users/${currentUser.uid}/friends/${uid}`).set({ nickname: fName, time: Date.now() });
+            db.ref(`users/${uid}/friends/${currentUser.uid}`).set({ nickname: nickname, time: Date.now() });
+            rejectFriend(uid); toast(`✅ ${fName} eklendi!`); loadFriendsList();
+        }
+
+        function rejectFriend(uid) { db.ref(`users/${currentUser.uid}/friendRequests/${uid}`).remove(); }
+
+        function loadFriendsList() {
+            if(!currentUser || currentUser.uid.startsWith('guest_')) return;
+            db.ref(`users/${currentUser.uid}/friends`).once('value').then(snap => {
+                const friends = snap.val() || {};
+                const flist = document.getElementById('fTabList');
+                flist.innerHTML = Object.keys(friends).length > 0 ? Object.entries(friends).map(([uid, data]) => `
+                    <div class="list-item">
+                        <span style="font-weight:700;flex:1;">👤 ${data.nickname}</span>
+                        <button class="btn small outline" style="width:auto;" onclick="removeFriend('${uid}')">Çıkar</button>
+                    </div>
+                `).join('') : '<p class="hint-text">Henüz arkadaşın yok.</p>';
+            }).catch(e=>{});
+        }
+
+        function removeFriend(uid) {
+            if(confirm('Arkadaşlıktan çıkarmak istiyor musun?')) {
+                db.ref(`users/${currentUser.uid}/friends/${uid}`).remove();
+                db.ref(`users/${uid}/friends/${currentUser.uid}`).remove();
+                loadFriendsList();
+            }
+        }
+
+        function addXP(amount) {
+            xp += amount;
+            while (xp >= XP_PER_LEVEL) { 
+                xp -= XP_PER_LEVEL; level++;
+                playBeep(880, 0.3); playBeep(1100, 0.3);
+                toast('🎉 Level ' + level + ' oldun!'); 
+            }
+            saveState(); updateProfileUI();
+        }
+
+        function saveNickname() { 
+            const nn = document.getElementById('profileNickname').value.trim().replace(/[.#$\[\]/]/g, ''); 
+            if (nn) { 
+                nickname = nn; 
+                document.getElementById('nicknameCreate').value = nickname;
+                document.getElementById('nicknameJoin').value = nickname;
+                document.getElementById('profileNickname').value = nickname;
+                saveState(); toast('✅ Takma ad kaydedildi!'); 
+                if (clanId && currentUser && !currentUser.uid.startsWith('guest_')) updateClanMemberNickname(); 
+            } else {
+                toast('❌ Geçersiz karakterler içeriyor!');
+            }
+        }
+
+        function updateProfileUI() {
+            document.getElementById('profileNickname').value = nickname;
+            document.getElementById('profileLevel').textContent = 'Level ' + level;
+            document.getElementById('profileXpBar').style.width = (xp / XP_PER_LEVEL * 100) + '%';
+            document.getElementById('profileXpText').textContent = xp + ' / ' + XP_PER_LEVEL + ' XP';
+            document.getElementById('profileScore').textContent = totalCorrectAnswers;
+            document.getElementById('profileGold').textContent = gold;
+            document.getElementById('totalCorrect').textContent = totalCorrectAnswers;
+            document.getElementById('totalWrong').textContent = totalWrongAnswers;
+            document.getElementById('profileJokers').textContent = '⚖️' + (jokersOwned.fifty || 0) + ' ⏳' + (jokersOwned.freeze || 0) + ' ⏭️' + (jokersOwned.skip || 0) + ' ⏱️' + (jokersOwned.time || 0);
+            
+            document.getElementById('profileCurrentAvatar').textContent = userAvatar;
+            document.getElementById('headerAvatarBtn').textContent = userAvatar;
+            document.getElementById('profileCurrentBadge').textContent = equippedBadge;
+            
+            renderAchievements();
+        }
+
+        function playBeep(f, d, t = 'sine') { 
+            if (!sfxOn) return; 
+            try { 
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+                o.connect(g); g.connect(audioCtx.destination);
+                g.gain.value = 0.06; o.type = t; o.frequency.value = f;
+                g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + d);
+                o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime + d); 
+            } catch (e) {} 
+        }
+
+        function togglePlay() { 
+            if (!audio.src) return; 
+            if (isPlaying) audio.pause(); else audio.play().catch(() => { document.getElementById('nowPlaying').textContent = '🔇 Dokun'; }); 
+        }
+
+        function restartTrack() { 
+            if (!audio.src) return;
+            audio.currentTime = 0; if (!isPlaying) audio.play().catch(() => {}); 
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            const t = document.getElementById(id); if (t) t.classList.add('active');
+            
+            const nav = document.getElementById('navMenu');
+            if(nav) nav.classList.remove('active');
+
+            if (id === 'market') renderMarket();
+            if (id === 'leaderboard') renderLB();
+            if (id === 'profile') updateProfileUI();
+            if (id === 'clan') { checkClanMembership(); searchClans(); }
+            if (id === 'friends') friendTab('list');
+            if (id === 'singleplayer') { renderCats('categories'); selectedCats = []; }
+            if (id === 'multiplayer') { renderMultiCats(); searchRooms(); }
+        }
+
+        function setLang(l) { 
+            lang = l; selectedCats = []; multiCats = [];
+            renderCats('categories'); renderMultiCats(); 
+        }
+
+        function setLangGlobal(l, showToast = true) {
+            setLang(l);
+            const btnTR = document.getElementById('setLangTR');
+            const btnEN = document.getElementById('setLangEN');
+            if(btnTR && btnEN) {
+                btnTR.className = l === 'tr' ? 'btn small' : 'btn small outline';
+                btnEN.className = l === 'en' ? 'btn small' : 'btn small outline';
+            }
+            saveState();
+            updateLanguageTexts();
+            if(showToast) toast(l === 'tr' ? 'Dil Türkçe yapıldı' : 'Language set to English');
+        }
+
+        function setDifficulty(lvl) { difficulty = lvl; updateDifficultyButtons(); saveState(); }
+
+        function updateDifficultyButtons() { 
+            const e = document.getElementById('diffEasy'), n = document.getElementById('diffNormal'), h = document.getElementById('diffHard'); 
+            if (e) e.className = difficulty === 'easy' ? 'btn small' : 'btn small outline'; 
+            if (n) n.className = difficulty === 'normal' ? 'btn small' : 'btn small outline'; 
+            if (h) h.className = difficulty === 'hard' ? 'btn small' : 'btn small outline'; 
+        }
+        const difficultyTime = { easy: 25, normal: 15, hard: 10 };
+
+        function renderCats(cid) { 
+            const c = document.getElementById(cid); if (!c) return;
+            c.innerHTML = catsData[lang].map(cat => `<div class="cat" data-id="${cat.id}" onclick="toggleCat('${cat.id}',this)"><span class="emoji">${cat.emoji}</span>${cat.label}</div>`).join(''); 
+        }
+
+        function renderMultiCats() { 
+            const c = document.getElementById('multiCatsCreate'); if (!c) return;
+            c.innerHTML = catsData[lang].map(cat => `<div class="multi-cat" data-id="${cat.id}" onclick="toggleMultiCat('${cat.id}',this)"><span>${cat.emoji}</span>${cat.label}</div>`).join(''); 
+        }
+
+        function toggleCat(id, el) { 
+            if (id.startsWith('all_')) {
+                selectedCats = [id];
+                document.querySelectorAll('#categories .cat').forEach(c => c.classList.remove('selected'));
+                el.classList.add('selected');
+                return;
+            }
+            if (selectedCats.some(c => c.startsWith('all_'))) {
+                selectedCats = [];
+                document.querySelectorAll('#categories .cat').forEach(c => c.classList.remove('selected'));
+            }
+
+            if (selectedCats.includes(id)) { 
+                selectedCats = selectedCats.filter(c => c !== id); 
+                el.classList.remove('selected'); 
+            } 
+            else if (selectedCats.length < 3) { 
+                selectedCats.push(id); el.classList.add('selected'); 
+            } 
+            else toast('En fazla 3 kategori!'); 
+        }
+
+        function toggleMultiCat(id, el) { 
+            if (id.startsWith('all_')) {
+                multiCats = [id];
+                document.querySelectorAll('#multiCatsCreate .multi-cat').forEach(c => c.classList.remove('selected'));
+                el.classList.add('selected');
+                return;
+            }
+            if (multiCats.some(c => c.startsWith('all_'))) {
+                multiCats = [];
+                document.querySelectorAll('#multiCatsCreate .multi-cat').forEach(c => c.classList.remove('selected'));
+            }
+
+            if (multiCats.includes(id)) { 
+                multiCats = multiCats.filter(c => c !== id); 
+                el.classList.remove('selected'); 
+            } 
+            else if (multiCats.length < 3) { 
+                multiCats.push(id); el.classList.add('selected'); 
+            } 
+            else toast('En fazla 3 kategori!'); 
+        }
+
+        async function fetchJSON(url) {
+            try { let r = await fetch(url); if (r.ok) return await r.json(); } catch(e) {}
+            try { let r = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url)); if (r.ok) return await r.json(); } catch(e) {}
+            try { let r = await fetch('https://corsproxy.io/?' + encodeURIComponent(url)); if (r.ok) return await r.json(); } catch(e) {}
+            return null;
+        }
+
+        async function fetchFilteredTracks(categories) { 
+            let pool = [];
+            const isAll = categories.includes('all_tr') || categories.includes('all_en');
+            let activeCats = isAll ? Object.keys(categoryKeywords[lang]) : categories;
+            
+            activeCats.forEach(c => { 
+                if(categoryKeywords[lang][c]) { 
+                    pool = pool.concat(categoryKeywords[lang][c]); 
+                } 
+            });
+            
+            if(isAll) {
+                const randomWords = lang === 'tr' ? ['Aşk', 'Sen', 'Ben', 'Gül', 'Gece', 'Yar'] : ['Love', 'You', 'Me', 'Night', 'Girl', 'Boy'];
+                pool = pool.concat(randomWords);
+            }
+
+            shuffle(pool);
+            let selectedKeywords = pool.slice(0, 5);
+            let allResults = [];
+            await Promise.all(selectedKeywords.map(async (term) => {
+                try {
+                    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&limit=30&entity=song&country=${lang==='tr'?'tr':'us'}`;
+                    let data = await fetchJSON(url);
+                    if (data && data.results) allResults.push(...data.results.filter(s => s.previewUrl && s.trackName && s.artistName));
+                } catch(e) {}
+            }));
+            const seen = new Set();
+            let uniqueTracks = allResults.filter(t => {
+                if (seen.has(t.trackId)) return false; seen.add(t.trackId); return true;
+            });
+            shuffle(uniqueTracks); return uniqueTracks.length >= 4 ? uniqueTracks : [];
+        }
+
+        function loadDemo(categories) { 
+            allTracks = []; const dbLang = demoDB[lang] || demoDB['en']; let tid = 0; 
+            const cats = categories.includes('all_tr') || categories.includes('all_en') ? Object.keys(dbLang) : categories;
+            
+            cats.forEach(cat => { 
+                const arr = dbLang[cat]; 
+                if (arr) { 
+                    arr.forEach(artistObj => { 
+                        artistObj.s.forEach(songName => { 
+                            allTracks.push({ trackId: 'demo_' + tid++, trackName: songName, artistName: artistObj.a, artworkUrl100: `https://picsum.photos/300/300?random=${tid}`, previewUrl: '', trackViewUrl: '#' }); 
+                        }); 
+                    }); 
+                } 
+            }); 
+            
+            if (allTracks.length < 4 && dbLang['pop_' + lang]) {
+                dbLang['pop_' + lang].forEach(artistObj => { 
+                    artistObj.s.forEach(songName => { 
+                        allTracks.push({ trackId: 'demo_' + tid++, trackName: songName, artistName: artistObj.a, artworkUrl100: `https://picsum.photos/300/300?random=${tid}`, previewUrl: '', trackViewUrl: '#' }); 
+                    }); 
+                }); 
+            }
+        }
+
+        async function startSingleGame() { 
+            if (!selectedCats.length) return toast('Kategori seçin!');
+            document.getElementById('loader').classList.add('active');
+            isMultiplayer = !1; singleGameActive = !0; gameActive = !0; score = 0; usedTracks.clear(); timerFrozen = !1; correctStreak = 0;
+            currentTrackIndex = 0; 
+            timeLeft = difficultyTime[difficulty] || 15;
+            document.getElementById('miniLB').style.display = 'none'; document.getElementById('gameoverOverlay').classList.remove('active'); 
+            const api = await fetchFilteredTracks(selectedCats); 
+            if (api.length >= 4) { allTracks = api.map(t => ({ trackId: t.trackId, trackName: t.trackName, artistName: t.artistName, artworkUrl100: t.artworkUrl100, previewUrl: t.previewUrl, trackViewUrl: t.trackViewUrl })); } 
+            else { loadDemo(selectedCats); if (allTracks.length === 0) loadDemo(['all_tr']); }
+            shuffle(allTracks); showScreen('game'); updateGameUI(); renderJokers(); nextRound();
+            document.getElementById('loader').classList.remove('active'); 
+        }
+
+        function showMultiTab(tab) { 
+            document.getElementById('tabCreate').style.display = tab === 'create' ? 'flex' : 'none';
+            document.getElementById('tabJoin').style.display = tab === 'join' ? 'flex' : 'none';
+            document.getElementById('tabSearch').style.display = tab === 'search' ? 'flex' : 'none';
+            document.getElementById('tab1v1').style.display = tab === '1v1' ? 'flex' : 'none';
+            const tabs = document.querySelectorAll('#multiplayer .tab'); tabs.forEach(t => t.classList.remove('active'));
+            if(tab === 'create') tabs[0].classList.add('active'); else if(tab === 'join') tabs[1].classList.add('active');
+            else if(tab === 'search') { tabs[2].classList.add('active'); searchRooms(); } else if(tab === '1v1') tabs[3].classList.add('active');
+        }
+
+        function clanTab(tab) { 
+            document.getElementById('clanCreateTab').style.display = tab === 'create' ? 'flex' : 'none';
+            document.getElementById('clanJoinTab').style.display = tab === 'join' ? 'flex' : 'none';
+            document.querySelectorAll('#clanNotJoined .tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('#clanNotJoined .tab')[tab === 'create' ? 0 : 1].classList.add('active'); 
+        }
+
+        function cleanInactiveRooms() { 
+            db.ref('rooms').once('value').then(s => { 
+                const rooms = s.val() || {}; const now = Date.now(); 
+                Object.entries(rooms).forEach(([id, r]) => { if (now - (r.createdAt || 0) > TIMEOUT) db.ref('rooms/' + id).remove(); }); 
+            }).catch(e=>{}); 
+        }
+
+        function searchRooms() { 
+            db.ref('rooms').once('value').then(s => { 
+                const rooms = s.val() || {}; const list = document.getElementById('roomList'); 
+                const open = Object.entries(rooms).filter(([_, r]) => r.status === 'waiting' && r.type !== '1v1' && Object.keys(r.players || {}).length < 4); 
+                if (!open.length) { list.innerHTML = '<p class="hint-text">Açık oda yok</p>'; return; }
+                list.innerHTML = open.map(([id, r]) => `<div class="list-item" onclick="quickJoin('${id}')" style="cursor:pointer;"><div><b>🏠 ${id}</b><div style="font-size:11px;color:var(--text2);">👥 ${Object.keys(r.players||{}).length}/4</div></div><span style="color:var(--accent);font-weight:800;">Katıl →</span></div>`).join(''); 
+            }).catch(() => toast('Liste alınamadı')); 
+        }
+
+        function quickJoin(code) { document.getElementById('roomCode').value = code; showMultiTab('join'); document.getElementById('nicknameJoin').focus(); }
+
+        function createRoom() { 
+            if (!multiCats.length) return toast('Kategori seç!');
+            roomId = Math.random().toString(36).substring(2, 8).toUpperCase(); isReady = !1;
+            db.ref('rooms/' + roomId).set({ status: 'waiting', type: 'multi', categories: multiCats, lang, createdAt: Date.now() }).then(() => { 
+                db.ref('rooms/' + roomId + '/players/' + playerId).set({ nickname: nickname, avatar: userAvatar, badge: equippedBadge, ready: !1, score: 0 }).then(() => { enterLobby(); sendSystemMsg(nickname + ' odayı oluşturdu!'); }); 
+            }).catch(() => toast('Bağlantı hatası! Misafir modunda çevrimiçi kısıtlaması olabilir.')); 
+        }
+
+        function joinRoom() { 
+            const code = document.getElementById('roomCode').value.trim().toUpperCase(); if (!code) return toast('Kod gir!');
+            roomId = code; isReady = !1;
+            db.ref('rooms/' + roomId).once('value').then(s => { 
+                const r = s.val(); if (!r) return toast('Oda bulunamadı!'); if (r.status !== 'waiting') return toast('Oyun başlamış!'); 
+                if (Object.keys(r.players || {}).length >= (r.type === '1v1' ? 2 : 4)) return toast('Oda dolu!');
+                db.ref('rooms/' + roomId + '/players/' + playerId).set({ nickname: nickname, avatar: userAvatar, badge: equippedBadge, ready: !1, score: 0 }).then(() => { enterLobby(); sendSystemMsg(nickname + ' katıldı!'); }); 
+            }).catch(() => toast('Bağlantı hatası!')); 
+        }
+
+        function start1v1() {
+            if (isSearching1v1) return; isSearching1v1 = true;
+            document.getElementById('btn1v1').disabled = true; document.getElementById('1v1Status').style.display = 'block'; document.getElementById('1v1Status').textContent = 'Rakip aranıyor...';
+            db.ref('rooms').once('value').then(s => {
+                const rooms = s.val() || {}; const open1v1 = Object.entries(rooms).find(([_, r]) => r.type === '1v1' && r.status === 'waiting' && Object.keys(r.players || {}).length < 2);
+                if (open1v1) {
+                    roomId = open1v1[0]; isReady = true; 
+                    db.ref('rooms/' + roomId + '/players/' + playerId).set({ nickname: nickname, avatar: userAvatar, badge: equippedBadge, ready: true, score: 0 }).then(() => { enterLobby(); sendSystemMsg(nickname + ' katıldı! Oyun başlıyor...'); });
+                } else {
+                    roomId = '1V1_' + Math.random().toString(36).substring(2, 8).toUpperCase(); isReady = true; 
+                    db.ref('rooms/' + roomId).set({ status: 'waiting', type: '1v1', categories: [lang === 'tr' ? 'all_tr' : 'all_en'], lang, createdAt: Date.now() }).then(() => {
+                        db.ref('rooms/' + roomId + '/players/' + playerId).set({ nickname: nickname, avatar: userAvatar, badge: equippedBadge, ready: true, score: 0 }).then(() => { enterLobby(); sendSystemMsg(nickname + ' odayı oluşturdu, rakip bekleniyor...'); });
+                    });
+                }
+            }).catch(() => { toast('Bağlantı hatası!'); reset1v1Search(); });
+        }
+
+        function reset1v1Search() {
+            isSearching1v1 = false; const btn = document.getElementById('btn1v1'); if (btn) btn.disabled = false;
+            const stat = document.getElementById('1v1Status'); if (stat) stat.style.display = 'none';
+        }
+
+        function enterLobby() { 
+            showScreen('lobby'); const is1v1 = roomId.startsWith('1V1_');
+            document.getElementById('lobbyCode').textContent = is1v1 ? "1v1 MODU" : roomId; cleanupListeners();
+            playerListener = db.ref('rooms/' + roomId + '/players').on('value', s => { players = s.val() || {}; updatePlayerList(); if (gameActive && isMultiplayer) renderMiniLB(); });
+            statusListener = db.ref('rooms/' + roomId + '/status').on('value', s => { if (s.val() === 'playing') { cleanupListeners(); reset1v1Search(); startMultiGame(); } });
+            roomListener = db.ref('rooms/' + roomId).on('value', s => { if (!s.exists()) { cleanupListeners(); reset1v1Search(); toast('Oda kapatıldı!'); showScreen('menu'); } });
+            listenChat(); 
+        }
+
+        function cleanupListeners() { 
+            if (playerListener) db.ref('rooms/' + roomId + '/players').off('value', playerListener); 
+            if (statusListener) db.ref('rooms/' + roomId + '/status').off('value', statusListener); 
+            if (roomListener) db.ref('rooms/' + roomId).off('value', roomListener); 
+            if (chatListener) db.ref('rooms/' + roomId + '/chat').off('value', chatListener);
+            playerListener = statusListener = roomListener = chatListener = null; 
+        }
+
+        function updatePlayerList() { 
+            const arr = Object.entries(players); const is1v1 = roomId.startsWith('1V1_'); const maxP = is1v1 ? 2 : 4;
+            const pCountSpan = document.getElementById('playerCount').parentNode; if(pCountSpan) pCountSpan.innerHTML = `Oyuncular (<span id="playerCount">${arr.length}</span>/${maxP})`;
+            document.getElementById('playerList').innerHTML = arr.map(([id, p]) => `
+                <div class="player-card">
+                    <span style="font-size:24px;">${p.avatar || '👤'}</span>
+                    <span style="flex:1;">${p.nickname} <span class="equipped-badge">${p.badge || ''}</span> ${id===playerId?' (Sen)':''}</span>
+                    <span class="ready-dot ${p.ready?'ready-green':''}"></span>
+                </div>
+            `).join(''); 
+            const btn = document.getElementById('btnReady');
+            if (is1v1) {
+                btn.style.display = 'none';
+                if (arr.length === 2) {
+                    document.getElementById('readyHint').textContent = '🎮 Rakip bulundu! Başlıyor...';
+                    if (arr[0][0] === playerId) { 
+                        db.ref('rooms/' + roomId).once('value').then(async s => {
+                            const r = s.val();
+                            let tracksToUse = [];
+                            const api = await fetchFilteredTracks(r.categories || []);
+                            if (api.length >= 4) tracksToUse = api; else { loadDemo(r.categories || []); if (allTracks.length === 0) loadDemo(['all_tr']); tracksToUse = [...allTracks]; }
+                            shuffle(tracksToUse);
+                            await db.ref('rooms/' + roomId).update({ tracks: tracksToUse, status: 'playing', gameStartedAt: Date.now() });
+                        });
+                    }
+                } else { document.getElementById('readyHint').textContent = 'Rakip bekleniyor...'; }
+            } else {
+                const allReady = arr.length >= 2 && arr.every(([_, p]) => p.ready); 
+                btn.style.display = 'block'; btn.textContent = isReady ? '✅ Hazır' : 'Hazırım'; btn.className = 'btn' + (isReady ? ' gold' : '');
+                document.getElementById('readyHint').textContent = allReady ? '🎮 Başlıyor...' : 'Herkes hazır olunca başlar'; 
+                if (allReady && arr[0][0] === playerId) { 
+                    btn.style.display = 'none'; document.getElementById('readyHint').textContent = 'Şarkılar yükleniyor...';
+                    db.ref('rooms/' + roomId).once('value').then(async s => {
+                        const r = s.val(); let tracksToUse = [];
+                        const api = await fetchFilteredTracks(r.categories || []);
+                        if (api.length >= 4) tracksToUse = api; else { loadDemo(r.categories || []); if (allTracks.length === 0) loadDemo(['all_tr']); tracksToUse = [...allTracks]; }
+                        shuffle(tracksToUse);
+                        await db.ref('rooms/' + roomId).update({ tracks: tracksToUse, status: 'playing', gameStartedAt: Date.now() });
+                    });
+                } 
+            }
+        }
+
+        function handleReadyClick() { isReady = !isReady; db.ref('rooms/' + roomId + '/players/' + playerId + '/ready').set(isReady); updatePlayerList(); }
+
+        function leaveRoom() { 
+            if (confirm('Çıkmak istediğine emin misin?')) { 
+                cleanupListeners(); db.ref('rooms/' + roomId + '/players/' + playerId).remove(); 
+                stopMusic();
+                if (Object.keys(players).length <= 1) db.ref('rooms/' + roomId).remove(); reset1v1Search(); showScreen('menu'); 
+            } 
+        }
+
+        async function startMultiGame() { 
+            isMultiplayer = !0; singleGameActive = !1; gameActive = !0; score = 0; usedTracks.clear(); correctStreak = 0;
+            currentTrackIndex = 0; 
+            document.getElementById('miniLB').style.display = 'flex'; 
+            const snap = await db.ref('rooms/' + roomId).once('value'); const room = snap.val();
+            allTracks = room.tracks || [];
+            if(allTracks.length === 0) loadDemo(['all_tr']);
+            
+            showScreen('game'); updateGameUI(); renderJokers(); nextRound(); 
+        }
+
+        function listenChat() { 
+            if (chatListener) db.ref('rooms/' + roomId + '/chat').off('value', chatListener);
+            chatListener = db.ref('rooms/' + roomId + '/chat').limitToLast(30).on('value', s => { 
+                const msgs = []; s.forEach(m => msgs.push(m.val())); msgs.sort((a, b) => a.time - b.time); renderChat(msgs); 
+            }); 
+        }
+
+        function renderChat(msgs) { 
+            const c = document.getElementById('chatMessages'); if (!c) return;
+            c.innerHTML = msgs.map(m => m.type === 'system' ? `<div class="chat-msg system">${m.text}</div>` : `<div class="chat-msg ${m.playerId===playerId?'mine':'other'}"><b style="font-size:10px;">${m.nickname||'?'}</b> ${m.text}</div>`).join(''); c.scrollTop = c.scrollHeight; 
+        }
+
+        function sendChat() { 
+            const inp = document.getElementById('chatInput'); const text = inp.value.trim(); if (!text) return;
+            db.ref('rooms/' + roomId + '/chat').push({ playerId, nickname, text, time: Date.now(), type: 'message' }); inp.value = ''; 
+        }
+
+        function sendSystemMsg(text) { db.ref('rooms/' + roomId + '/chat').push({ text, time: Date.now(), type: 'system' }); }
+
+        function nextRound() { 
+            if (!gameActive) return; 
+            if (isMultiplayer && score >= TARGET) { endMultiGame(); return; }
+            clearInterval(timerInterval); timeLeft = isMultiplayer ? 15 : (difficultyTime[difficulty] || 15); timerFrozen = !1;
+            stopMusic();
+            
+            if (isMultiplayer) {
+                if (currentTrackIndex >= allTracks.length) currentTrackIndex = 0;
+                currentTrack = allTracks[currentTrackIndex++];
+                usedTracks.add(currentTrack.trackId);
+            } else {
+                const avail = allTracks.filter(t => !usedTracks.has(t.trackId)); 
+                if (!avail.length) { usedTracks.clear(); avail.push(...allTracks); }
+                currentTrack = avail[Math.floor(Math.random() * avail.length)]; usedTracks.add(currentTrack.trackId);
+            }
+            
+            document.getElementById('albumArt').src = currentTrack.artworkUrl100?.replace('100x100', '300x300') || currentTrack.artworkUrl100;
+            document.getElementById('progressBar').style.width = '0%'; document.getElementById('timerText').textContent = '⏱ ' + timeLeft; document.getElementById('nowPlaying').textContent = '🎵 Tahmin et...'; 
+            if (currentTrack.previewUrl) { audio.src = currentTrack.previewUrl; audio.load(); setTimeout(() => { if (gameActive) audio.play().catch(() => { document.getElementById('nowPlaying').textContent = '🔇 Dokun'; }); }, 200); } 
+            else { document.getElementById('nowPlaying').textContent = '🎵 Demo'; playBeep(520, 0.15, 'triangle'); }
+            renderJokers(); renderGameContent(); if (isMultiplayer) renderMiniLB(); startTimer(); 
+        }
+
+        function startTimer() { 
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => { 
+                if (!gameActive) { clearInterval(timerInterval); return; } 
+                if (!timerFrozen) {
+                    timeLeft--; 
+                    document.getElementById('timerText').textContent = '⏱ ' + Math.max(timeLeft, 0); 
+                    const maxT = isMultiplayer ? 15 : (difficultyTime[difficulty] || 15);
+                    const progressPercent = ((maxT - timeLeft) / maxT) * 100;
+                    document.getElementById('progressBar').style.width = Math.max(progressPercent, 0) + '%'; 
+                } 
+                if (timeLeft <= 0 && !timerFrozen) { 
+                    clearInterval(timerInterval); 
+                    correctStreak = 0;
+                    if (isMultiplayer) { score = Math.max(0, score - 5); updateGameUI(); db.ref('rooms/' + roomId + '/players/' + playerId + '/score').set(score); }
+                    playBeep(200, 0.3, 'sawtooth'); setTimeout(nextRound, 500); 
+                } 
+            }, 1000); 
+        }
+
+        function renderGameContent() { 
+            const c = document.getElementById('gameContent'); c.innerHTML = ''; if (!currentTrack) return; 
+            const opts = [currentTrack]; const seenNames = new Set([currentTrack.trackName.toLowerCase()]);
+            const pool = allTracks.filter(t => t.trackId !== currentTrack.trackId);
+            shuffle(pool); 
+            for (const t of pool) { if (opts.length >= 4) break; if(!seenNames.has(t.trackName.toLowerCase())) { opts.push(t); seenNames.add(t.trackName.toLowerCase()); } } 
+            let fallbackId = 1; while (opts.length < 4) { opts.push({ trackId: 'x' + fallbackId, trackName: 'Bilinmeyen Şarkı ' + fallbackId, artistName: '???' }); fallbackId++; }
+            shuffle(opts); 
+            const ow = document.createElement('div'); ow.className = 'options';
+            opts.forEach(o => { 
+                const b = document.createElement('div'); 
+                b.className = 'option'; 
+                b.textContent = o.trackName; 
+                b.dataset.id = o.trackId; 
+                b.onclick = () => handleAnswer(o, b, ow); 
+                ow.appendChild(b); 
+            }); 
+            c.appendChild(ow); 
+        }
+
+        function handleAnswer(sel, el, wrap) { 
+            if (!gameActive || timeLeft <= 0) return; 
+            const all = wrap.querySelectorAll('.option'); all.forEach(b => b.style.pointerEvents = 'none');
+            clearInterval(timerInterval); 
+            stopMusic();
+            
+            if (String(sel.trackId) === String(currentTrack.trackId)) { 
+                el.classList.add('correct'); 
+                correctStreak++;
+                let streakBonus = correctStreak >= 3 ? (correctStreak * 5) : 0;
+                
+                const bonus = (timeLeft >= 11 ? 50 : timeLeft >= 6 ? 25 : 10) + streakBonus; 
+                const pts = 25 + bonus;
+                score += pts; gold += Math.floor(pts / 2); totalCorrectAnswers++; addXP(bonus); 
+                playBeep(660, 0.2); playBeep(880, 0.2);
+                
+                if(correctStreak >= 3) {
+                    toast('🔥 ' + correctStreak + 'x Seri! +' + streakBonus + ' Puan');
+                    playBeep(1200, 0.3, 'square');
+                }
+                
+                showReveal(pts); updateGameUI(); saveState(); 
+                if (isMultiplayer) { db.ref('rooms/' + roomId + '/players/' + playerId + '/score').set(score); if (score >= TARGET) { setTimeout(endMultiGame, 2000); return; } }
+                setTimeout(() => { hideReveal(); nextRound(); }, 3000); 
+            } else { 
+                correctStreak = 0; 
+                el.classList.add('wrong'); 
+                all.forEach(b => { if (String(b.dataset.id) === String(currentTrack.trackId)) b.classList.add('correct'); }); 
+                totalWrongAnswers++; 
+                if (isMultiplayer) { score = Math.max(0, score - 5); updateGameUI(); db.ref('rooms/' + roomId + '/players/' + playerId + '/score').set(score); }
+                playBeep(180, 0.3, 'sawtooth'); updateGameUI(); saveState(); setTimeout(nextRound, 1500); 
+            } 
+        }
+
+        function renderMiniLB() { 
+            const lb = document.getElementById('miniLB'); const sorted = Object.entries(players).sort((a, b) => (b[1].score || 0) - (a[1].score || 0));
+            lb.innerHTML = '<div style="font-weight:900;font-size:12px;text-align:center;color:var(--text2);">🏆 HEDEF: ' + TARGET + '</div>' + sorted.map(([id, p], i) => `<div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px;padding:4px 8px;border-radius:10px;background:${id===playerId?'rgba(255,65,108,0.1)':'transparent'};"><span>${['🥇','🥈','🥉'][i]||p.avatar||'👤'} ${p.nickname} <span class="equipped-badge">${p.badge||''}</span></span> <span style="color:var(--accent);">⭐${p.score||0}</span></div>`).join(''); 
+        }
+
+        function showReveal(pts) { 
+            document.getElementById('revealCover').src = currentTrack.artworkUrl100.replace('100x100', '600x600');
+            document.getElementById('revealArtist').textContent = currentTrack.artistName; document.getElementById('revealTitle').textContent = currentTrack.trackName;
+            document.getElementById('revealLink').href = currentTrack.trackViewUrl || '#'; document.getElementById('revealPoints').textContent = pts; document.getElementById('revealOverlay').classList.add('active'); 
+        }
+        function hideReveal() { document.getElementById('revealOverlay').classList.remove('active'); }
+
+        function renderJokers() { 
+            const a = document.getElementById('jokerArea'); a.innerHTML = ''; 
+            if (isMultiplayer) { a.innerHTML = '<div class="joker used" style="grid-column:1/-1;justify-content:center;">🃏 Çok Oyunculuda Devre Dışı</div>'; return; }
+            [{ id: 'fifty', emoji: '⚖️', label: 'Yarı Yarıya', act: useJokerFifty }, { id: 'freeze', emoji: '⏳', label: 'Dondur', act: useJokerFreeze }, { id: 'skip', emoji: '⏭️', label: 'Pas Geç', act: useJokerSkip }, { id: 'time', emoji: '⏱️', label: '+10 Sn', act: useJokerTime }].forEach(j => { 
+                const o = jokersOwned[j.id] || 0; const d = document.createElement('div'); d.className = 'joker' + (o <= 0 ? ' used' : '');
+                d.innerHTML = `<span style="font-size:18px;">${j.emoji}</span> <span>${j.label}</span><small>${o} adet</small>`;
+                d.onclick = () => { if (o > 0) { jokersOwned[j.id]--; saveState(); j.act(); renderJokers(); } else toast('Joker kalmadı!'); }; a.appendChild(d); 
+            }); 
+        }
+
+        function useJokerFifty() { const all = document.querySelectorAll('.option'); Array.from(all).filter(b => String(b.dataset.id) !== String(currentTrack.trackId) && !b.classList.contains('hidden')).slice(0, 2).forEach(b => b.classList.add('hidden')); playBeep(500, 0.15); }
+        function useJokerFreeze() { timerFrozen = !0; toast('⏳ Zaman durdu!'); setTimeout(() => { if (gameActive) { timerFrozen = !1; toast('⏳ Devam!'); } }, 5000); }
+        function useJokerSkip() { toast('⏭️ Atlandı!'); playBeep(440, 0.2); nextRound(); }
+        function useJokerTime() { timeLeft += 10; toast('⏱️ +10 Saniye!'); document.getElementById('timerText').textContent = '⏱ ' + timeLeft; playBeep(600, 0.2); }
+
+        function quitGame() { 
+            if (confirm('Oyundan çık? Puanlar silinecek.')) { 
+                gameActive = !1; clearInterval(timerInterval); 
+                stopMusic(); 
+                hideReveal(); 
+                document.getElementById('gameoverOverlay').classList.remove('active'); 
+                if (isMultiplayer) { cleanupListeners(); db.ref('rooms/' + roomId + '/players/' + playerId).remove(); if (Object.keys(players).length <= 1) db.ref('rooms/' + roomId).remove(); showScreen('menu'); } 
+                else { if (singleGameActive && score > 0) { saveLB(score); showGameOverOverlay(); } else showScreen('menu'); singleGameActive = !1; } 
+            } 
+        }
+
+        function showGameOverOverlay() { document.getElementById('gameoverScore').textContent = score; document.getElementById('gameoverOverlay').classList.add('active'); document.getElementById('gameContent').innerHTML = ''; }
+        function restartSingleGame() { document.getElementById('gameoverOverlay').classList.remove('active'); gameActive = !1; clearInterval(timerInterval); stopMusic(); startSingleGame(); }
+        function goToMenuFromGameover() { document.getElementById('gameoverOverlay').classList.remove('active'); gameActive = !1; clearInterval(timerInterval); stopMusic(); singleGameActive = !1; showScreen('menu'); }
+
+        function endMultiGame() { 
+            gameActive = !1; clearInterval(timerInterval); stopMusic(); hideReveal(); 
+            const winner = Object.entries(players).sort((a, b) => (b[1].score || 0) - (a[1].score || 0))[0]; playBeep(660, 0.3); playBeep(880, 0.4);
+            setTimeout(() => { 
+                alert('🏆 KAZANAN: ' + winner[1].nickname + '\nPuan: ' + winner[1].score);
+                db.ref('rooms/' + roomId).update({ status: 'finished', winner: winner[0] }).then(() => { cleanupListeners(); showScreen('lobby'); db.ref('rooms/' + roomId).update({ status: 'waiting', createdAt: Date.now() }); Object.keys(players).forEach(k => { db.ref('rooms/' + roomId + '/players/' + k).update({ score: 0, ready: !1 }); }); enterLobby(); }); 
+            }, 500); 
+        }
+
+        function updateGameUI() { document.getElementById('scoreBadge').textContent = score; document.getElementById('goldBadge').textContent = gold; }
+        function updateAllUI() { const mg = document.getElementById('marketGold'); if (mg) mg.textContent = gold + ' 🪙'; updateGameUI(); updateProfileUI(); }
+
+        function renderMarket() { 
+            document.getElementById('marketGold').textContent = gold + ' 🪙';
+            document.getElementById('marketItems').innerHTML = [ { id: 'fifty', emoji: '⚖️', name: 'Yarı Yarıya', desc: '2 şıkkı eler', cost: 75 }, { id: 'freeze', emoji: '⏳', name: 'Dondur', desc: '5 sn durdurur', cost: 100 }, { id: 'skip', emoji: '⏭️', name: 'Pas Geç', desc: 'Cezasız atlar', cost: 150 }, { id: 'time', emoji: '⏱️', name: '+10 Sn', desc: 'Süre ekler', cost: 50 } ].map(i => `<div class="list-item"><div class="mode-emoji" style="width:50px;height:50px;font-size:28px;">${i.emoji}</div><div class="mode-info"><span class="mode-name" style="font-size:14px;">${i.name}</span><span class="mode-desc">${i.desc}</span></div><span style="font-weight:900;color:var(--gold);margin-right:8px;">${i.cost}🪙</span><button class="btn small gold" style="width:auto;padding:8px 16px;" onclick="buyJoker('${i.id}',${i.cost})">Al</button></div>`).join(''); 
+        }
+
+        function buyJoker(id, cost) { if (gold >= cost) { gold -= cost; jokersOwned[id] = (jokersOwned[id] || 0) + 1; saveState(); updateAllUI(); renderMarket(); playBeep(880, 0.2); toast('✅ Alındı!'); } else toast('❌ Altın yetersiz!'); }
+
+        function getLB() { try { return JSON.parse(localStorage.getItem('mq_lb') || '[]'); } catch (e) { return []; } }
+        function saveLB(s) { const lb = getLB(); lb.push({ score: s, date: new Date().toLocaleDateString('tr-TR') }); lb.sort((a, b) => b.score - a.score); localStorage.setItem('mq_lb', JSON.stringify(lb.slice(0, 10))); }
+        function renderLB() { const lb = getLB(); document.getElementById('lbList').innerHTML = lb.length ? lb.map((e, i) => `<div class="list-item"><div style="font-size:22px;width:35px;text-align:center;font-weight:900;">${['🥇','🥈','🥉'][i]||(i+1+'.')}</div><div style="flex:1;font-weight:700;">${e.date}</div><div style="font-weight:900;color:var(--accent);background:rgba(255,65,108,0.1);padding:5px 10px;border-radius:10px;">⭐ ${e.score}</div></div>`).join('') : '<div class="list-item" style="justify-content:center;color:var(--text2);">🏆 Skor yok</div>'; }
+
+        function toggleDark() { darkOn = !darkOn; document.getElementById('app').classList.toggle('dark', darkOn); document.body.classList.toggle('dark', darkOn); document.getElementById('darkToggle').textContent = darkOn ? 'AÇIK' : 'KAPALI'; saveState(); }
+        function toggleSFX() { sfxOn = !sfxOn; document.getElementById('sfxToggle').textContent = sfxOn ? 'AÇIK' : 'KAPALI'; saveState(); }
+
+        function shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
+        function toast(msg) { const old = document.querySelector('.toast'); if (old) old.remove(); const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2500); }
+
+        function checkDailyGift() { 
+            const last = localStorage.getItem('mq_lastDaily'); const now = Date.now(); 
+            if (last && now - parseInt(last) < 86400000) { const remaining = 86400000 - (now - parseInt(last)); const hours = Math.floor(remaining / 3600000); const mins = Math.floor((remaining % 3600000) / 60000); toast('🎁 ' + hours + 's ' + mins + 'd sonra alabilirsin'); } 
+            else { 
+                const gifts = [{ type: 'gold', amount: Math.floor(Math.random() * 100) + 50, text: '🪙 Altın' }, { type: 'joker', joker: ['fifty', 'freeze', 'skip', 'time'][Math.floor(Math.random() * 4)], amount: Math.random() < 0.7 ? 1 : 2, text: '🃏 Joker' }]; 
+                const gift = gifts[Math.floor(Math.random() * gifts.length)]; 
+                if (gift.type === 'gold') { gold += gift.amount; toast('🎁 Günlük hediye: ' + gift.amount + ' 🪙!'); } else { jokersOwned[gift.joker] = (jokersOwned[gift.joker] || 0) + gift.amount; toast('🎁 Günlük hediye: ' + gift.amount + ' ' + gift.text + '!'); }
+                localStorage.setItem('mq_lastDaily', now); saveState(); updateAllUI(); updateDailyGiftUI(); playBeep(880, 0.3); 
+            } 
+        }
+
+        function updateDailyGiftUI() { 
+            const last = localStorage.getItem('mq_lastDaily'); const now = Date.now(); const el = document.getElementById('dailyStatus'); if (!el) return; 
+            if (!last || now - parseInt(last) >= 86400000) { el.textContent = 'Hediyeni al!'; } else { const remaining = 86400000 - (now - parseInt(last)); const hours = Math.floor(remaining / 3600000); const mins = Math.floor((remaining % 3600000) / 60000); el.textContent = hours + 's ' + mins + 'd sonra'; } 
+        }
+        setInterval(updateDailyGiftUI, 30000);
+
+        function checkClanMembership() { if (clanId) { db.ref('clans/' + clanId).once('value').then(s => { if (s.exists()) { showClanJoined(); } else { clanId = null; saveState(); showClanNotJoined(); } }).catch(e=>{}); } else { showClanNotJoined(); } }
+        function showClanNotJoined() { document.getElementById('clanNotJoined').style.display = 'flex'; document.getElementById('clanJoined').style.display = 'none'; }
+        function showClanJoined() { document.getElementById('clanNotJoined').style.display = 'none'; document.getElementById('clanJoined').style.display = 'flex'; listenClan(); }
+
+        function createClan() { 
+            if(!currentUser || currentUser.uid.startsWith('guest_')) return toast('Misafir klan kuramaz!');
+            if (clanId) return toast('Zaten bir klandasın!'); 
+            const name = document.getElementById('clanName').value.trim().replace(/[.#$\[\]/]/g, ''); 
+            if (!name) return toast('Geçerli bir klan adı gir!'); if (gold < 100) return toast('100 🪙 gerekli!');
+            gold -= 100; clanId = 'clan_' + Math.random().toString(36).substring(2, 10); const desc = document.getElementById('clanDesc').value.trim();
+            db.ref('clans/' + clanId).set({ name, desc, score: 0, leader: nickname, createdAt: Date.now() }).then(() => {
+                db.ref('clans/' + clanId + '/members/' + playerId).set({ nickname, role: 'leader', joinedAt: Date.now() }).then(() => { db.ref('clans/' + clanId + '/chat').push({ nickname: 'Sistem', text: name + ' klanı kuruldu!', time: Date.now(), type: 'system' }); saveState(); showClanJoined(); toast('✅ Klan kuruldu!'); updateAllUI(); }); 
+            }).catch(() => toast('Hata!')); 
+        }
+
+        function searchClans() { db.ref('clans').once('value').then(s => { const clans = s.val() || {}; const list = document.getElementById('clanList'); const open = Object.entries(clans).filter(([_, c]) => Object.keys(c.members || {}).length < 20); if (!open.length) { list.innerHTML = '<p class="hint-text">Açık klan yok</p>'; return; } list.innerHTML = open.map(([id, c]) => `<div class="list-item" style="cursor:pointer;" onclick="joinClan('${id}')"><div><b>🛡️ ${c.name}</b><div style="font-size:11px;color:var(--text2);">👥 ${Object.keys(c.members||{}).length} üye • 🏆 ${c.score||0}</div></div><span style="color:var(--accent);font-weight:800;">Katıl →</span></div>`).join(''); }).catch(e=>{}); }
+
+        function joinClan(cid) { 
+            if(!currentUser || currentUser.uid.startsWith('guest_')) return toast('Misafir klana katılamaz!');
+            if (clanId) return toast('Zaten klandasın!'); db.ref('clans/' + cid).once('value').then(s => { const c = s.val(); if (!c) return toast('Klan bulunamadı!'); if (Object.keys(c.members || {}).length >= 20) return toast('Klan dolu!'); clanId = cid; db.ref('clans/' + clanId + '/members/' + playerId).set({ nickname, role: 'member', joinedAt: Date.now() }).then(() => { db.ref('clans/' + clanId + '/chat').push({ nickname: 'Sistem', text: nickname + ' klana katıldı!', time: Date.now(), type: 'system' }); saveState(); showClanJoined(); toast('✅ Klana katıldın!'); }); }).catch(() => toast('Hata!')); 
+        }
+
+        function leaveClan() { if (!clanId) return; if (confirm('Klandan ayrılmak istediğine emin misin?')) { cleanupClanListeners(); db.ref('clans/' + clanId + '/members/' + playerId).remove(); db.ref('clans/' + clanId + '/chat').push({ nickname: 'Sistem', text: nickname + ' klandan ayrıldı.', time: Date.now(), type: 'system' }); clanId = null; saveState(); showClanNotJoined(); toast('Klandan ayrıldın.'); } }
+
+        function clanWar() { if (!clanId) return; db.ref('clans').once('value').then(s => { const clans = s.val() || {}; const others = Object.entries(clans).filter(([id, c]) => id !== clanId && Object.keys(c.members || {}).length > 0); if (!others.length) return toast('Savaşacak klan yok!'); const [targetId, target] = others[Math.floor(Math.random() * others.length)]; const myScore = Math.floor(Math.random() * 100) + (level * 10); const theirScore = Math.floor(Math.random() * 100) + (Object.keys(target.members || {}).length * 10); if (myScore > theirScore) { const reward = 200; gold += reward; db.ref('clans/' + clanId).update({ score: (s.val()[clanId]?.score || 0) + 50 }); toast('⚔️ Savaş kazanıldı! +' + reward + ' 🪙'); db.ref('clans/' + clanId + '/chat').push({ nickname: 'Sistem', text: '🏆 ' + target.name + ' klanına karşı savaş kazanıldı! +' + reward + ' 🪙', time: Date.now(), type: 'system' }); } else { toast('⚔️ Savaş kaybedildi! ' + target.name + ' kazandı.'); db.ref('clans/' + clanId + '/chat').push({ nickname: 'Sistem', text: '💔 ' + target.name + ' klanına karşı savaş kaybedildi.', time: Date.now(), type: 'system' }); } saveState(); updateAllUI(); }).catch(e=>{}); }
+
+        function listenClan() { if (!clanId) return; cleanupClanListeners(); clanListener = db.ref('clans/' + clanId).on('value', s => { const data = s.val(); if (!data) { clanId = null; saveState(); showClanNotJoined(); return; } document.getElementById('myClanName').textContent = data.name; document.getElementById('myClanDesc').textContent = data.desc || ''; document.getElementById('myClanScore').textContent = data.score || 0; const members = data.members || {}; document.getElementById('clanMembers').innerHTML = Object.entries(members).map(([k, m]) => `<div class="list-item" style="padding:8px 12px;margin-bottom:4px;">${m.role==='leader'?'👑':'👤'} ${m.nickname} <span class="badge" style="margin-left:auto;font-size:10px;">${m.role==='leader'?'Lider':'Üye'}</span></div>`).join(''); }); clanChatListener = db.ref('clans/' + clanId + '/chat').limitToLast(30).on('value', s => { const msgs = []; s.forEach(m => msgs.push(m.val())); msgs.sort((a, b) => a.time - b.time); const el = document.getElementById('clanChatMessages'); if (el) { el.innerHTML = msgs.map(m => m.type === 'system' ? `<div class="chat-msg system">${m.text}</div>` : `<div class="chat-msg ${m.playerId===playerId?'mine':'other'}"><b style="font-size:10px;">${m.nickname}</b> ${m.text}</div>`).join(''); el.scrollTop = el.scrollHeight; } }); }
+
+        function sendClanChat() { if (!clanId) return; const inp = document.getElementById('clanChatInput'); const text = inp.value.trim(); if (!text) return; db.ref('clans/' + clanId + '/chat').push({ playerId, nickname, text, time: Date.now(), type: 'message' }); inp.value = ''; }
+        function updateClanMemberNickname() { if (clanId) { db.ref('clans/' + clanId + '/members/' + playerId).once('value').then(s => { if (s.exists()) { db.ref('clans/' + clanId + '/members/' + playerId).update({ nickname }); } }); } }
+        function cleanupClanListeners() { if (clanListener) db.ref('clans/' + clanId).off('value', clanListener); if (clanChatListener) db.ref('clans/' + clanId + '/chat').off('value', clanChatListener); clanListener = clanChatListener = null; }
+
+        window.addEventListener('beforeunload', () => { if (roomId && playerId) { cleanupListeners(); db.ref('rooms/' + roomId + '/players/' + playerId).remove(); } cleanupClanListeners(); });
+    </script>
+</body>
+</html>
